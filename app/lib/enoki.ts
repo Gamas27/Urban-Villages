@@ -49,6 +49,14 @@ export function initEnoki(config?: Partial<EnokiConfig>): void {
     return;
   }
 
+  if (!finalConfig.googleClientId) {
+    console.warn(
+      '⚠️ Google Client ID not found. Set NEXT_PUBLIC_GOOGLE_CLIENT_ID in .env.local.\n' +
+      '   Enoki will be available but Google login option may not appear.\n' +
+      '   Get your Client ID from: https://console.cloud.google.com/apis/credentials'
+    );
+  }
+
   try {
     // Create SuiClient for the network
     const suiClient = new SuiClient({
@@ -57,21 +65,42 @@ export function initEnoki(config?: Partial<EnokiConfig>): void {
 
     // Register Enoki wallets
     // This makes Enoki wallets available in the wallet selector
+    const providers = finalConfig.googleClientId
+      ? {
+          google: {
+            clientId: finalConfig.googleClientId,
+          },
+        }
+      : undefined;
+
+    console.log('🔧 Enoki config:', {
+      network: finalConfig.network,
+      hasApiKey: !!finalConfig.apiKey,
+      apiKeyPrefix: finalConfig.apiKey ? `${finalConfig.apiKey.substring(0, 20)}...` : 'not set',
+      hasGoogleClientId: !!finalConfig.googleClientId,
+      googleClientId: finalConfig.googleClientId ? `${finalConfig.googleClientId.substring(0, 20)}...` : 'not set',
+    });
+    
+    if (!finalConfig.googleClientId) {
+      console.error('❌ Google Client ID is missing! This will cause 400 errors.');
+    }
+
     registerEnokiWallets({
       client: suiClient,
       network: finalConfig.network,
       apiKey: finalConfig.apiKey,
-      providers: finalConfig.googleClientId
-        ? {
-            google: {
-              clientId: finalConfig.googleClientId,
-            },
-          }
-        : undefined,
+      providers,
     });
 
     enokiInitialized = true;
     console.log('✅ Enoki initialized successfully');
+    
+    if (!finalConfig.googleClientId) {
+      console.warn(
+        '⚠️ Google Client ID not configured. Google login will not be available.\n' +
+        '   Add NEXT_PUBLIC_GOOGLE_CLIENT_ID to .env.local and restart the server.'
+      );
+    }
   } catch (error) {
     console.error('❌ Failed to initialize Enoki:', error);
     // Don't throw - allow app to continue with regular wallets

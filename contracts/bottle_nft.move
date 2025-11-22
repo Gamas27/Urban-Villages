@@ -20,12 +20,12 @@ module cork_collective::bottle_nft {
     // ===== Structs =====
 
     /// Admin capability for minting bottles
-    struct AdminCap has key, store {
+    public struct AdminCap has key, store {
         id: UID
     }
 
     /// Main Bottle NFT object
-    struct BottleNFT has key, store {
+    public struct BottleNFT has key, store {
         id: UID,
         /// Wine name (e.g., "Sunset Orange 2023")
         name: String,
@@ -60,7 +60,7 @@ module cork_collective::bottle_nft {
     }
 
     /// Shared registry for QR code verification
-    struct QRRegistry has key {
+    public struct QRRegistry has key, store {
         id: UID,
         /// QR code -> Bottle ID mapping
         qr_to_bottle: VecMap<String, ID>
@@ -102,12 +102,12 @@ module cork_collective::bottle_nft {
 
     fun init(ctx: &mut TxContext) {
         // Create admin capability
-        transfer::transfer(AdminCap {
+        transfer::public_transfer(AdminCap {
             id: object::new(ctx)
         }, tx_context::sender(ctx));
 
         // Create shared QR registry
-        transfer::share_object(QRRegistry {
+        transfer::public_share_object(QRRegistry {
             id: object::new(ctx),
             qr_to_bottle: vec_map::empty()
         });

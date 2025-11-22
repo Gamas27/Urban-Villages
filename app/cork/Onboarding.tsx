@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Camera, Sparkles, Users } from 'lucide-react';
 import { useCurrentAccount, ConnectButton } from '@mysten/dapp-kit';
 import { useEnokiWalrusUpload } from '@/lib/hooks/useEnokiWalrusUpload';
+import { WalletAddress } from '@/components/WalletAddress';
 
 interface OnboardingProps {
   onComplete: (data: { username: string; village: string; profilePicBlobId?: string }) => void;
@@ -118,10 +119,20 @@ export function Onboarding({ onComplete }: OnboardingProps) {
             <ConnectButton />
           </div>
           
-          <div className="mt-6 p-4 bg-blue-50 rounded-xl text-left">
-            <p className="text-xs text-blue-900 mb-2">🔐 <strong>No Wallet Extension Needed!</strong></p>
+          {account && (
+            <div className="mb-4">
+              <p className="text-xs text-gray-600 mb-2 text-center">Your wallet address:</p>
+              <WalletAddress />
+              <p className="text-xs text-gray-500 mt-2 text-center">
+                Copy this address and fund it with SUI tokens using a faucet
+              </p>
+            </div>
+          )}
+          
+          <div className="mt-6 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl text-left border border-blue-200">
+            <p className="text-xs text-blue-900 mb-2 font-semibold">🔐 <strong>Sign in with Google</strong></p>
             <p className="text-xs text-blue-700">
-              Connect with Enoki (Google login) or any SUI wallet. Enoki wallets don't require a browser extension.
+              No wallet extension needed! Click "Connect Wallet" above and select <strong>Enoki (Google)</strong> to sign in with your Google account.
             </p>
           </div>
           
@@ -253,6 +264,13 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                   <p className="text-sm text-blue-800 text-center">
                     <strong>Please connect a wallet first</strong>
                   </p>
+                </div>
+              )}
+
+              {account && (
+                <div className="mb-4">
+                  <p className="text-xs text-gray-600 mb-2 text-center">Your wallet address (for funding):</p>
+                  <WalletAddress />
                 </div>
               )}
 

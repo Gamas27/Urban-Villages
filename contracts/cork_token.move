@@ -16,15 +16,15 @@ module cork_collective::cork_token {
     // ===== Structs =====
 
     /// One-time witness for Cork token
-    struct CORK_TOKEN has drop {}
+    public struct CORK_TOKEN has drop {}
 
     /// Admin capability for minting operations
-    struct AdminCap has key, store {
+    public struct AdminCap has key, store {
         id: UID
     }
 
     /// Treasury capability (created during init)
-    struct Treasury has key {
+    public struct Treasury has key, store {
         id: UID,
         cap: TreasuryCap<CORK_TOKEN>
     }
@@ -71,13 +71,13 @@ module cork_collective::cork_token {
         transfer::public_freeze_object(metadata);
 
         // Store treasury cap in a shared object for controlled access
-        transfer::share_object(Treasury {
+        transfer::public_share_object(Treasury {
             id: object::new(ctx),
             cap: treasury_cap
         });
 
         // Create admin capability and transfer to deployer
-        transfer::transfer(AdminCap {
+        transfer::public_transfer(AdminCap {
             id: object::new(ctx)
         }, tx_context::sender(ctx));
     }

@@ -3,18 +3,17 @@
 import { SuiClientProvider, WalletProvider } from "@mysten/dapp-kit";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { networkConfig } from "./networkConfig";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { initEnoki } from "./lib/enoki";
+
+// Initialize Enoki BEFORE WalletProvider renders
+// This must be done synchronously on client-side
+if (typeof window !== 'undefined') {
+  initEnoki();
+}
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(() => new QueryClient());
-
-  // Initialize Enoki when component mounts (client-side only)
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      initEnoki();
-    }
-  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

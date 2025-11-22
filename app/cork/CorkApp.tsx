@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Onboarding } from './Onboarding';
 import { MainApp } from './MainApp';
 import { useCurrentAccount, useSignAndExecuteTransaction } from '@mysten/dapp-kit';
@@ -17,6 +17,31 @@ export default function CorkApp() {
     profilePicBlobId?: string;
     namespaceId?: string;
   } | null>(null);
+
+  // Check sessionStorage on mount to restore onboarding state
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = sessionStorage.getItem('cork_onboarding_data');
+      if (stored) {
+        try {
+          const data = JSON.parse(stored);
+          // Only restore if we have valid onboarding data
+          if (data.username && data.village) {
+            setUserData(data);
+            // Only set as onboarded if wallet is also connected
+            // This ensures wallet connection is required
+            if (account) {
+              setIsOnboarded(true);
+            }
+          }
+        } catch (err) {
+          console.error('Failed to parse onboarding data:', err);
+          // Clear invalid data
+          sessionStorage.removeItem('cork_onboarding_data');
+        }
+      }
+    }
+  }, [account]); // Re-check when account changes
 
   const handleOnboardingComplete = async (data: {
     username: string;

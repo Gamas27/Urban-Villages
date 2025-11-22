@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useCurrentAccount, useSignAndExecuteTransaction, useSuiClient } from '@mysten/dapp-kit';
 import { createWalrusService, getWalrusUrl } from '../walrus';
 
@@ -18,10 +18,18 @@ export function useWalrusUpload() {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Create Walrus service (client-side only)
-  const walrus = useMemo(() => {
-    if (typeof window === 'undefined') return null;
-    return createWalrusService({ network: 'testnet', epochs: 10 });
+  // Create Walrus service (client-side only, async due to WASM)
+  const [walrus, setWalrus] = useState<any>(null);
+  
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      createWalrusService({ network: 'testnet', epochs: 10 })
+        .then(setWalrus)
+        .catch((err) => {
+          console.error('Failed to initialize Walrus:', err);
+          setError('Failed to initialize Walrus service');
+        });
+    }
   }, []);
 
   /**
