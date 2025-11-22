@@ -37,6 +37,12 @@ export default function Navbar() {
               <Link href="/cork" className="text-gray-900">Cork Collective</Link>
             </NavigationMenuLink>
           </NavigationMenuItem>
+
+          <NavigationMenuItem>
+            <NavigationMenuLink asChild className={navigationMenuTriggerStyle()}>
+              <Link href="/test-walrus" className="text-gray-900">Test Walrus</Link>
+            </NavigationMenuLink>
+          </NavigationMenuItem>
         </div>
 
         <NavigationMenuItem className="flex ml-auto">

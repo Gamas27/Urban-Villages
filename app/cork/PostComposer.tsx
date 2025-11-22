@@ -2,10 +2,11 @@
 
 import { useState } from 'react';
 import { X, Image as ImageIcon, Sparkles, Loader2 } from 'lucide-react';
-// import { useWalrusUpload } from '@/lib/hooks/useWalrusUpload';
-import { MOCK_USER } from './data/mockData';
+import { useEnokiWalrusUpload } from '@/lib/hooks/useEnokiWalrusUpload';
+import { useCurrentAccount } from '@mysten/dapp-kit';
 import { getVillageById } from './data/villages';
 import { Button } from '@/components/ui/button';
+import { savePost } from './lib/postStorage';
 
 interface PostComposerProps {
   onClose: () => void;
@@ -13,21 +14,52 @@ interface PostComposerProps {
 }
 
 export function PostComposer({ onClose, onPost }: PostComposerProps) {
-  // const { uploadFile, uploading, error } = useWalrusUpload();
-  // Mock upload state for demo
-  const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const account = useCurrentAccount();
+  const { uploadFile, uploading: walrusUploading, error: walrusError } = useEnokiWalrusUpload();
   
   const [text, setText] = useState('');
   const [imageBlobId, setImageBlobId] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [posting, setPosting] = useState(false);
+  
+  // Get onboarding data from sessionStorage (stored by Onboarding component)
+  const onboardingData = typeof window !== 'undefined' 
+    ? (() => {
+        try {
+          const stored = sessionStorage.getItem('cork_onboarding_data');
+          return stored ? JSON.parse(stored) : null;
+        } catch {
+          return null;
+        }
+      })()
+    : null;
+  
+  const username = onboardingData?.username || 'user';
+  const villageId = onboardingData?.village || 'lisbon';
+  const namespace = onboardingData?.username && onboardingData?.village 
+    ? `${onboardingData.username}.${onboardingData.village}` 
+    : 'user';
+  const profilePicUrl = onboardingData?.profilePicBlobId 
+    ? `https://aggregator.walrus-testnet.walrus.space/v1/${onboardingData.profilePicBlobId}`
+    : null;
 
-  const village = getVillageById(MOCK_USER.village);
+  const village = getVillageById(villageId);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    // Check if wallet is connected (Enoki or regular)
+    if (!account) {
+      console.warn('Please connect a wallet first.');
+      // Show preview anyway
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+      return;
+    }
 
     // Show preview immediately
     const reader = new FileReader();
@@ -36,13 +68,13 @@ export function PostComposer({ onClose, onPost }: PostComposerProps) {
     };
     reader.readAsDataURL(file);
 
-    // Mock upload to Walrus
-    setUploading(true);
-    setError(null);
-    await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate upload
-    const mockBlobId = `blob_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-    setImageBlobId(mockBlobId);
-    setUploading(false);
+    // Upload to Walrus using Enoki wallet (via dapp-kit)
+    const result = await uploadFile(file);
+    if (result) {
+      setImageBlobId(result.blobId);
+    } else {
+      console.error('Walrus upload failed:', walrusError);
+    }
   };
 
   const handleRemoveImage = () => {
@@ -52,22 +84,43 @@ export function PostComposer({ onClose, onPost }: PostComposerProps) {
 
   const handlePost = async () => {
     if (!text.trim() && !imageBlobId) return;
+    if (!account || !username || !namespace || !villageId) {
+      console.error('User data incomplete for posting.');
+      return;
+    }
 
     setPosting(true);
     
-    // Simulate transaction
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    try {
+      // Save post with Walrus blobId
+      const post = savePost({
+        author: username,
+        namespace: namespace,
+        village: villageId,
+        text: text.trim(),
+        imageBlobId: imageBlobId || undefined,
+        type: 'regular',
+      });
 
-    // TODO: Create post transaction on SUI
-    // Include text and imageBlobId
-    
-    setPosting(false);
-    onPost();
+      console.log('Post saved:', post);
+
+      // TODO: Create post transaction on SUI blockchain
+      // Include text and imageBlobId in transaction
+      // await createPostTransaction(post);
+      
+      // Simulate transaction delay
+      await new Promise(resolve => setTimeout(resolve, 1000));
+    } catch (error) {
+      console.error('Error posting:', error);
+    } finally {
+      setPosting(false);
+      onPost();
+    }
   };
 
   const estimatedCork = text.length > 100 ? 20 : text.length > 50 ? 15 : 10;
   const hasImage = imageBlobId || previewUrl;
-  const canPost = (text.trim().length > 0 || hasImage) && !uploading && !posting;
+  const canPost = (text.trim().length > 0 || hasImage) && !walrusUploading && !posting;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end md:items-center justify-center">
@@ -102,13 +155,19 @@ export function PostComposer({ onClose, onPost }: PostComposerProps) {
         <div className="p-4">
           {/* User Info */}
           <div className="flex items-center gap-3 mb-4">
-            <img
-              src={MOCK_USER.profilePicUrl}
-              alt="Profile"
-              className="w-12 h-12 rounded-full object-cover"
-            />
+            {profilePicUrl ? (
+              <img
+                src={profilePicUrl}
+                alt="Profile"
+                className="w-12 h-12 rounded-full object-cover"
+              />
+            ) : (
+              <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
+                <span className="text-lg">{username[0]?.toUpperCase() || 'U'}</span>
+              </div>
+            )}
             <div>
-              <p className="font-semibold">@{MOCK_USER.namespace}</p>
+              <p className="font-semibold">@{namespace}</p>
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <span className="text-xl">{village?.emoji}</span>
                 <span>{village?.name}</span>
@@ -147,7 +206,7 @@ export function PostComposer({ onClose, onPost }: PostComposerProps) {
                 alt="Upload preview"
                 className="w-full rounded-xl"
               />
-              {uploading && (
+              {walrusUploading && (
                 <div className="absolute inset-0 bg-black bg-opacity-50 flex flex-col items-center justify-center">
                   <Loader2 className="w-8 h-8 text-white animate-spin mb-2" />
                   <p className="text-white text-sm">Uploading to Walrus...</p>
@@ -169,20 +228,28 @@ export function PostComposer({ onClose, onPost }: PostComposerProps) {
             </div>
           )}
 
-          {error && (
+          {walrusError && (
             <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm">
-              {error}
+              Upload failed: {walrusError}
+            </div>
+          )}
+
+          {!account && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-sm">
+              <p className="text-blue-800 text-center">
+                <strong>Please connect a wallet to upload images</strong>
+              </p>
             </div>
           )}
 
           {/* Actions */}
           <div className="flex items-center gap-4 pt-4 border-t border-gray-200">
-            <label className="flex items-center gap-2 text-purple-600 hover:bg-purple-50 px-4 py-2 rounded-lg cursor-pointer transition-colors">
+            <label className={`flex items-center gap-2 text-purple-600 hover:bg-purple-50 px-4 py-2 rounded-lg cursor-pointer transition-colors ${!account ? 'opacity-50 cursor-not-allowed' : ''}`}>
               <input
                 type="file"
                 accept="image/*"
                 onChange={handleImageUpload}
-                disabled={uploading || posting || hasImage}
+                disabled={walrusUploading || posting || !!hasImage || !account}
                 className="hidden"
               />
               <ImageIcon className="w-5 h-5" />

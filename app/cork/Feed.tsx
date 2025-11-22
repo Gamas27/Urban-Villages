@@ -1,9 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Heart, MessageCircle, Sparkles, Gift, Send, ShoppingBag, ArrowRight } from 'lucide-react';
-import { MOCK_POSTS } from './data/mockData';
+import { MOCK_POSTS, type Post } from './data/mockData';
 import { getVillageById } from './data/villages';
+import { getPosts } from './lib/postStorage';
+import { WalrusImage } from '@/components/WalrusImage';
 
 interface FeedProps {
   village: string;
@@ -13,10 +15,45 @@ type FeedTab = 'village' | 'following' | 'all';
 
 export function Feed({ village }: FeedProps) {
   const [activeTab, setActiveTab] = useState<FeedTab>('village');
+  const [posts, setPosts] = useState<Post[]>([]);
 
   const currentVillage = getVillageById(village);
+
+  // Load posts from storage and combine with mock posts
+  useEffect(() => {
+    const storedPosts = getPosts();
+    // Combine stored posts with mock posts, removing duplicates
+    const allPosts = [...storedPosts, ...MOCK_POSTS];
+    // Sort by timestamp (newest first)
+    allPosts.sort((a, b) => b.timestamp - a.timestamp);
+    setPosts(allPosts);
+  }, []);
+
+  // Listen for new posts (from PostComposer)
+  useEffect(() => {
+    const refreshPosts = () => {
+      const storedPosts = getPosts();
+      const allPosts = [...storedPosts, ...MOCK_POSTS];
+      allPosts.sort((a, b) => b.timestamp - a.timestamp);
+      setPosts(allPosts);
+    };
+
+    const handleStorageChange = () => refreshPosts();
+    const handlePostCreated = () => refreshPosts();
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('postCreated', handlePostCreated);
+    // Also check on focus (for same-tab updates)
+    window.addEventListener('focus', handleStorageChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('postCreated', handlePostCreated);
+      window.removeEventListener('focus', handleStorageChange);
+    };
+  }, []);
   
-  const filteredPosts = MOCK_POSTS.filter(post => {
+  const filteredPosts = posts.filter(post => {
     if (activeTab === 'village') return post.village === village;
     if (activeTab === 'following') return true; // TODO: filter by following
     return true; // all posts
@@ -209,12 +246,22 @@ export function Feed({ village }: FeedProps) {
               )}
 
               {/* Post Image */}
-              {post.imageUrl && !isActivityPost && (
-                <img
-                  src={post.imageUrl}
-                  alt="Post image"
-                  className="w-full aspect-video object-cover"
-                />
+              {!isActivityPost && (
+                <>
+                  {post.imageBlobId ? (
+                    <WalrusImage
+                      blobId={post.imageBlobId}
+                      alt="Post image"
+                      className="w-full aspect-video object-cover"
+                    />
+                  ) : post.imageUrl ? (
+                    <img
+                      src={post.imageUrl}
+                      alt="Post image"
+                      className="w-full aspect-video object-cover"
+                    />
+                  ) : null}
+                </>
               )}
 
               {/* Post Actions */}

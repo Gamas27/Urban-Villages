@@ -32,6 +32,8 @@ export function MainApp() {
   const handlePost = () => {
     setShowPostComposer(false);
     setActiveTab('feed');
+    // Trigger feed refresh by dispatching a custom event
+    window.dispatchEvent(new Event('postCreated'));
   };
 
   if (showPostComposer) {

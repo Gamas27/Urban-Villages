@@ -1,47 +1,20 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { VILLAGES, type Village } from './data/villages';
 import { Button } from '@/components/ui/button';
-import { Camera, Sparkles, Users, Wallet, Mail } from 'lucide-react';
-import { 
-  initiateGoogleLogin, 
-  isAuthenticated, 
-  getCurrentUser, 
-  type ZkLoginUser,
-  ZKLOGIN_INFO 
-} from '../lib/zkLogin';
+import { Camera, Sparkles, Users } from 'lucide-react';
+import { useCurrentAccount, ConnectButton } from '@mysten/dapp-kit';
+import { useEnokiWalrusUpload } from '@/lib/hooks/useEnokiWalrusUpload';
 
 interface OnboardingProps {
   onComplete: (data: { username: string; village: string; profilePicBlobId?: string }) => void;
 }
 
 export function Onboarding({ onComplete }: OnboardingProps) {
-  const [zkUser, setZkUser] = useState<ZkLoginUser | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [isClient, setIsClient] = useState(false);
-  
-  // Check if we're on the client side
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-  
-  // Check if already authenticated
-  useEffect(() => {
-    if (!isClient) return;
-    
-    if (isAuthenticated()) {
-      setZkUser(getCurrentUser());
-    }
-
-    // Listen for zkLogin completion
-    const handleZkLoginComplete = (event: any) => {
-      setZkUser(event.detail);
-    };
-
-    window.addEventListener('zklogin_complete', handleZkLoginComplete);
-    return () => window.removeEventListener('zklogin_complete', handleZkLoginComplete);
-  }, [isClient]);
+  // Use Enoki wallet via dapp-kit (works with Enoki wallets and regular wallets)
+  const account = useCurrentAccount();
+  const { uploadFile, uploading: walrusUploading, error: walrusError } = useEnokiWalrusUpload();
 
   const [step, setStep] = useState(1);
   const [selectedVillage, setSelectedVillage] = useState<Village | null>(null);
@@ -53,6 +26,18 @@ export function Onboarding({ onComplete }: OnboardingProps) {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Check if wallet is connected (Enoki or regular)
+    if (!account) {
+      console.warn('Please connect a wallet first.');
+      // Show preview anyway
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+      return;
+    }
+
     // Show preview immediately
     const reader = new FileReader();
     reader.onloadend = () => {
@@ -60,26 +45,34 @@ export function Onboarding({ onComplete }: OnboardingProps) {
     };
     reader.readAsDataURL(file);
 
-    // Mock upload to Walrus (for demo)
-    setUploading(true);
-    await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate upload
-    const mockBlobId = `blob_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-    setProfilePicBlobId(mockBlobId);
-    setUploading(false);
+    // Upload to Walrus using Enoki wallet (via dapp-kit)
+    const result = await uploadFile(file);
+    if (result) {
+      setProfilePicBlobId(result.blobId);
+    } else {
+      console.error('Walrus upload failed:', walrusError);
+    }
   };
 
   const handleComplete = () => {
     if (!selectedVillage || !username) return;
     
-    onComplete({
+    const onboardingData = {
       username,
       village: selectedVillage.id,
       profilePicBlobId: profilePicBlobId || undefined,
-    });
+    };
+    
+    // Store in sessionStorage for access across components
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('cork_onboarding_data', JSON.stringify(onboardingData));
+    }
+    
+    onComplete(onboardingData);
   };
 
-  // Step 1: Wallet Connection
-  if (!zkUser) {
+  // Step 0: Wallet Connection (Enoki wallets appear in ConnectButton)
+  if (!account) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-50 via-purple-50 to-pink-50 flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-white rounded-3xl shadow-2xl p-8 text-center">
@@ -121,40 +114,19 @@ export function Onboarding({ onComplete }: OnboardingProps) {
             </div>
           </div>
 
-          <Button 
-            onClick={initiateGoogleLogin}
-            className="w-full py-6 text-lg bg-white hover:bg-gray-50 text-gray-800 border-2 border-gray-300 mb-3"
-          >
-            <Mail className="w-5 h-5 mr-2" />
-            Continue with Google
-          </Button>
-          
-          <div className="relative my-4">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">or</span>
-            </div>
+          <div className="mb-4">
+            <ConnectButton />
           </div>
           
-          <Button 
-            onClick={initiateGoogleLogin}
-            className="w-full py-6 text-lg bg-gradient-to-r from-orange-500 to-purple-600 hover:from-orange-600 hover:to-purple-700"
-          >
-            <Wallet className="w-5 h-5 mr-2" />
-            Connect SUI Wallet
-          </Button>
-          
           <div className="mt-6 p-4 bg-blue-50 rounded-xl text-left">
-            <p className="text-xs text-blue-900 mb-2">🔐 <strong>No Wallet? No Problem!</strong></p>
+            <p className="text-xs text-blue-900 mb-2">🔐 <strong>No Wallet Extension Needed!</strong></p>
             <p className="text-xs text-blue-700">
-              Use your Google account to sign in. We use SUI zkLogin technology to create a blockchain wallet for you automatically.
+              Connect with Enoki (Google login) or any SUI wallet. Enoki wallets don't require a browser extension.
             </p>
           </div>
           
           <p className="text-xs text-gray-500 mt-4">
-            Powered by SUI Network + Walrus Storage
+            Powered by SUI Network + Enoki + Walrus Storage
           </p>
         </div>
       </div>
@@ -276,13 +248,21 @@ export function Onboarding({ onComplete }: OnboardingProps) {
             </p>
 
             <div className="space-y-6">
+              {!account && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                  <p className="text-sm text-blue-800 text-center">
+                    <strong>Please connect a wallet first</strong>
+                  </p>
+                </div>
+              )}
+
               <div className="flex justify-center">
-                <label className="cursor-pointer group">
+                <label className={`cursor-pointer group ${!account ? 'opacity-50' : ''}`}>
                   <input
                     type="file"
                     accept="image/*"
                     onChange={handleProfilePicUpload}
-                    disabled={uploading}
+                    disabled={walrusUploading || !account}
                     className="hidden"
                   />
                   <div className="relative">
@@ -297,7 +277,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                         <Camera className="w-12 h-12 text-gray-400 group-hover:text-purple-600" />
                       </div>
                     )}
-                    {uploading && (
+                    {walrusUploading && (
                       <div className="absolute inset-0 bg-black bg-opacity-50 rounded-full flex items-center justify-center">
                         <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin" />
                       </div>
@@ -309,9 +289,14 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                 </label>
               </div>
 
-              {uploading && (
+              {walrusUploading && (
                 <p className="text-center text-sm text-purple-600">
                   Uploading to Walrus...
+                </p>
+              )}
+              {walrusError && (
+                <p className="text-center text-sm text-red-600">
+                  Upload failed: {walrusError}
                 </p>
               )}
 
@@ -326,10 +311,10 @@ export function Onboarding({ onComplete }: OnboardingProps) {
 
               <Button
                 onClick={handleComplete}
-                disabled={uploading}
+                disabled={walrusUploading}
                 className="w-full py-6 text-lg bg-gradient-to-r from-orange-500 to-purple-600 hover:from-orange-600 hover:to-purple-700"
               >
-                {uploading ? 'Uploading...' : profilePicBlobId ? 'Complete Onboarding' : 'Skip for Now'}
+                {walrusUploading ? 'Uploading...' : profilePicBlobId ? 'Complete Onboarding' : 'Skip for Now'}
               </Button>
 
               <p className="text-xs text-gray-500 text-center">

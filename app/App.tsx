@@ -1,12 +1,14 @@
+'use client';
+
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SuiClientProvider, WalletProvider, createNetworkConfig } from '@mysten/dapp-kit';
 import { getFullnodeUrl } from '@mysten/sui/client';
-import CorkApp from './app/cork/CorkApp';
+import { UrbanVillages } from './components/UrbanVillages';
 
 // Query client for React Query
 const queryClient = new QueryClient();
 
-// SUI network configuration for zkLogin
+// SUI network configuration for wallets
 const { networkConfig } = createNetworkConfig({
   testnet: { url: getFullnodeUrl('testnet') },
   mainnet: { url: getFullnodeUrl('mainnet') },
@@ -20,7 +22,7 @@ export default function App() {
           autoConnect={true}
           preferredWallets={['Sui Wallet']}
         >
-          <CorkApp />
+          <UrbanVillages />
         </WalletProvider>
       </SuiClientProvider>
     </QueryClientProvider>
