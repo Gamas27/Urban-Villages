@@ -3,14 +3,14 @@
 // Deployed on SUI blockchain
 
 module namespace::namespace {
-    use sui::object::{Self, UID, ID};
+    use sui::object;
     use sui::transfer;
-    use sui::tx_context::{Self, TxContext};
-    use std::string::{Self, String};
-    use std::option::{Self, Option};
-    use sui::table::{Self, Table};
+    use sui::tx_context;
+    use std::string;
+    use std::option;
+    use sui::table;
     use sui::event;
-    use sui::clock::{Self, Clock};
+    use sui::clock;
 
     // ===== Errors =====
     const ENamespaceAlreadyExists: u64 = 0;
@@ -21,23 +21,23 @@ module namespace::namespace {
     // ===== Structs =====
 
     /// Admin capability for managing registry
-    struct AdminCap has key, store {
-        id: UID
+    public struct AdminCap has key, store {
+        id: object::UID
     }
 
     /// Namespace object - owned by user
-    struct Namespace has key, store {
-        id: UID,
+    public struct Namespace has key, store {
+        id: object::UID,
         /// Username (e.g., "maria")
-        username: String,
+        username: string::String,
         /// Village ID (e.g., "lisbon")
-        village: String,
+        village: string::String,
         /// Full namespace string (username.village)
-        namespace: String,
+        namespace: string::String,
         /// Owner address
         owner: address,
         /// Profile picture blob ID from Walrus
-        profile_pic_blob_id: String,
+        profile_pic_blob_id: string::String,
         /// Creation timestamp
         created_at: u64,
         /// Last update timestamp
@@ -45,33 +45,33 @@ module namespace::namespace {
     }
 
     /// Shared registry for all namespaces
-    struct Registry has key {
-        id: UID,
+    public struct Registry has key, store {
+        id: object::UID,
         /// Namespace string -> Namespace object ID mapping
         /// Format: "username.village" -> Namespace ID
-        namespaces: Table<String, ID>,
+        namespaces: table::Table<string::String, object::ID>,
     }
 
     // ===== Events =====
 
-    struct NamespaceRegistered has copy, drop {
-        namespace: String,
-        username: String,
-        village: String,
+    public struct NamespaceRegistered has copy, drop {
+        namespace: string::String,
+        username: string::String,
+        village: string::String,
         owner: address,
-        namespace_id: ID,
+        namespace_id: object::ID,
         timestamp: u64,
     }
 
-    struct NamespaceUpdated has copy, drop {
-        namespace: String,
+    public struct NamespaceUpdated has copy, drop {
+        namespace: string::String,
         owner: address,
-        field: String,
+        field: string::String,
         timestamp: u64,
     }
 
-    struct NamespaceTransferred has copy, drop {
-        namespace: String,
+    public struct NamespaceTransferred has copy, drop {
+        namespace: string::String,
         from: address,
         to: address,
         timestamp: u64,
@@ -81,7 +81,7 @@ module namespace::namespace {
 
     /// Initialize the namespace registry
     /// Called once when the module is published
-    fun init(ctx: &mut TxContext) {
+    fun init(ctx: &mut tx_context::TxContext) {
         // Create admin capability
         transfer::public_transfer(AdminCap {
             id: object::new(ctx)
@@ -99,7 +99,7 @@ module namespace::namespace {
     /// Check if namespace format is valid
     /// Note: Full validation should be done in frontend
     /// This is a basic check for non-empty strings
-    fun is_valid_namespace_str(namespace: String): bool {
+    fun is_valid_namespace_str(namespace: string::String): bool {
         // Basic check - namespace should not be empty
         // More validation (format, length, etc.) should be done in frontend
         string::length(&namespace) > 0
@@ -116,8 +116,8 @@ module namespace::namespace {
         username: vector<u8>,
         village: vector<u8>,
         profile_pic_blob_id: vector<u8>,
-        clock: &Clock,
-        ctx: &mut TxContext
+        clock: &clock::Clock,
+        ctx: &mut tx_context::TxContext
     ) {
         let namespace_str = string::utf8(namespace);
         let username_str = string::utf8(username);
@@ -135,6 +135,7 @@ module namespace::namespace {
 
         // Create namespace object
         let namespace_id = object::new(ctx);
+        let namespace_obj_id = object::uid_to_inner(&namespace_id);
         let namespace_obj = Namespace {
             id: namespace_id,
             username: username_str,
@@ -146,8 +147,8 @@ module namespace::namespace {
             updated_at: timestamp,
         };
 
-        // Add to registry
-        table::add(&mut registry.namespaces, namespace_str, object::id(&namespace_obj));
+        // Add to registry (using the ID we extracted before moving)
+        table::add(&mut registry.namespaces, namespace_str, namespace_obj_id);
 
         // Transfer namespace to owner
         transfer::public_transfer(namespace_obj, sender);
@@ -158,7 +159,7 @@ module namespace::namespace {
             username: username_str,
             village: village_str,
             owner: sender,
-            namespace_id: object::id(&namespace_obj),
+            namespace_id: namespace_obj_id,
             timestamp,
         });
     }
@@ -179,7 +180,7 @@ module namespace::namespace {
     public fun resolve(
         registry: &Registry,
         namespace: vector<u8>
-    ): (address, Option<ID>) {
+    ): (address, option::Option<object::ID>) {
         let namespace_str = string::utf8(namespace);
         
         // Check if namespace exists
@@ -197,8 +198,8 @@ module namespace::namespace {
     public entry fun update_profile_pic(
         namespace: &mut Namespace,
         new_blob_id: vector<u8>,
-        clock: &Clock,
-        ctx: &mut TxContext
+        clock: &clock::Clock,
+        ctx: &mut tx_context::TxContext
     ) {
         let sender = tx_context::sender(ctx);
         
@@ -221,8 +222,8 @@ module namespace::namespace {
     public entry fun transfer_namespace(
         mut namespace: Namespace,
         recipient: address,
-        clock: &Clock,
-        ctx: &mut TxContext
+        clock: &clock::Clock,
+        ctx: &mut tx_context::TxContext
     ) {
         let sender = tx_context::sender(ctx);
         
@@ -252,7 +253,7 @@ module namespace::namespace {
     // ===== Public View Functions =====
 
     /// Get namespace metadata
-    public fun get_namespace_info(namespace: &Namespace): (String, String, String, address, String, u64, u64) {
+    public fun get_namespace_info(namespace: &Namespace): (string::String, string::String, string::String, address, string::String, u64, u64) {
         (
             namespace.username,
             namespace.village,
