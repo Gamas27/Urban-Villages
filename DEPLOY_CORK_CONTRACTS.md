@@ -18,9 +18,11 @@ sui client active-address
 
 ## 📦 Deploy Cork Token
 
+**⚠️ Important:** Deploy from the isolated package to avoid "Duplicate module" errors.
+
 ### 1. Build
 ```bash
-cd "/Users/joaogameiro/Urban Villages/contracts"
+cd "/Users/joaogameiro/Urban Villages/cork-token-package"
 sui move build
 ```
 
@@ -67,9 +69,11 @@ NEXT_PUBLIC_CORK_TREASURY_ID=0x5678...efgh
 
 ## 🍷 Deploy Bottle NFT
 
+**⚠️ Important:** Deploy from the isolated package to avoid "Duplicate module" errors.
+
 ### 1. Build
 ```bash
-cd "/Users/joaogameiro/Urban Villages/contracts"
+cd "/Users/joaogameiro/Urban Villages/bottle-nft-package"
 sui move build
 ```
 
