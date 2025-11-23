@@ -243,13 +243,13 @@ export function usePostUpload() {
           blobId,
           url,
         };
-      };
+      } catch (err) {
+        throw err; // Re-throw for retry logic
+      }
+    };
 
-      // Race between upload and timeout
-      return await Promise.race([uploadPromise(), timeoutPromise]);
-    } catch (err) {
-      throw err; // Re-throw for retry logic
-    }
+    // Race between upload and timeout
+    return await Promise.race([uploadPromise(), timeoutPromise]);
   };
 
   return {
