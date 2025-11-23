@@ -39,14 +39,22 @@ function toMicroCork(amount: number): bigint {
 
 export async function POST(req: NextRequest) {
   try {
+    console.log('[mint-purchase] 📦 Purchase request received');
+    
     // Check if admin private key is configured
     const adminPrivateKey = process.env.ADMIN_PRIVATE_KEY;
     if (!adminPrivateKey) {
+      console.error('[mint-purchase] ❌ Admin private key not configured');
       return NextResponse.json(
-        { error: 'Admin private key not configured. Add ADMIN_PRIVATE_KEY to your environment variables.' },
+        { 
+          error: 'Admin private key not configured',
+          details: 'Add ADMIN_PRIVATE_KEY to your environment variables in Vercel project settings'
+        },
         { status: 500 }
       );
     }
+    
+    console.log('[mint-purchase] ✅ Admin private key found (length:', adminPrivateKey.length, ')');
 
     // Get contract IDs from environment
     const corkPackageId = process.env.NEXT_PUBLIC_CORK_TOKEN_PACKAGE_ID;
@@ -57,18 +65,36 @@ export async function POST(req: NextRequest) {
     const bottleAdminCapId = process.env.NEXT_PUBLIC_BOTTLE_ADMIN_CAP_ID;
 
     if (!corkPackageId || !corkTreasuryId || !corkAdminCapId) {
+      console.error('[mint-purchase] ❌ Cork Token contract IDs missing:', {
+        hasPackageId: !!corkPackageId,
+        hasTreasuryId: !!corkTreasuryId,
+        hasAdminCapId: !!corkAdminCapId,
+      });
       return NextResponse.json(
-        { error: 'Cork Token contract IDs not configured in environment variables' },
+        { 
+          error: 'Cork Token contract IDs not configured',
+          details: 'Add NEXT_PUBLIC_CORK_TOKEN_PACKAGE_ID, NEXT_PUBLIC_CORK_TREASURY_ID, and NEXT_PUBLIC_CORK_ADMIN_CAP_ID to your environment variables'
+        },
         { status: 500 }
       );
     }
 
     if (!bottlePackageId || !bottleRegistryId || !bottleAdminCapId) {
+      console.error('[mint-purchase] ❌ Bottle NFT contract IDs missing:', {
+        hasPackageId: !!bottlePackageId,
+        hasRegistryId: !!bottleRegistryId,
+        hasAdminCapId: !!bottleAdminCapId,
+      });
       return NextResponse.json(
-        { error: 'Bottle NFT contract IDs not configured in environment variables' },
+        { 
+          error: 'Bottle NFT contract IDs not configured',
+          details: 'Add NEXT_PUBLIC_BOTTLE_NFT_PACKAGE_ID, NEXT_PUBLIC_BOTTLE_REGISTRY_ID, and NEXT_PUBLIC_BOTTLE_ADMIN_CAP_ID to your environment variables'
+        },
         { status: 500 }
       );
     }
+    
+    console.log('[mint-purchase] ✅ All contract IDs configured');
 
     // Parse request body
     const body = await req.json();
@@ -87,9 +113,30 @@ export async function POST(req: NextRequest) {
       customText,       // Optional custom text
     } = body;
 
+    console.log('[mint-purchase] 📋 Request data:', {
+      recipient,
+      wineName,
+      vintage,
+      region,
+      winery,
+      wineType,
+      corkAmount: corkAmount || 50,
+    });
+
     if (!recipient || !wineName || !vintage || !region || !winery || !wineType) {
+      console.error('[mint-purchase] ❌ Missing required fields:', {
+        hasRecipient: !!recipient,
+        hasWineName: !!wineName,
+        hasVintage: !!vintage,
+        hasRegion: !!region,
+        hasWinery: !!winery,
+        hasWineType: !!wineType,
+      });
       return NextResponse.json(
-        { error: 'Missing required fields: recipient, wineName, vintage, region, winery, wineType are required' },
+        { 
+          error: 'Missing required fields',
+          details: 'recipient, wineName, vintage, region, winery, wineType are required'
+        },
         { status: 400 }
       );
     }
@@ -195,9 +242,12 @@ export async function POST(req: NextRequest) {
     });
 
     // Build, sign and execute transaction
+    console.log('[mint-purchase] 🔨 Building transaction...');
     const txBytes = await tx.build({ client: suiClient });
+    console.log('[mint-purchase] ✍️ Signing transaction...');
     const signedTransaction = await keypair.signTransaction(txBytes);
     
+    console.log('[mint-purchase] 🚀 Executing transaction...');
     const result = await suiClient.executeTransactionBlock({
       transactionBlock: signedTransaction.bytes,
       signature: signedTransaction.signature,
@@ -206,6 +256,11 @@ export async function POST(req: NextRequest) {
         showEvents: true,
         showObjectChanges: true,
       },
+    });
+    
+    console.log('[mint-purchase] ✅ Transaction executed:', {
+      digest: result.digest,
+      status: result.effects?.status?.status,
     });
 
     // Extract NFT object ID from transaction events or object changes
@@ -268,14 +323,38 @@ export async function POST(req: NextRequest) {
       adminAddress, // For debugging
     });
   } catch (error) {
-    console.error('[mint-purchase] Error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     const errorStack = error instanceof Error ? error.stack : undefined;
+    const errorName = error instanceof Error ? error.name : 'Unknown';
+    
+    console.error('[mint-purchase] ❌ Error:', {
+      name: errorName,
+      message: errorMessage,
+      stack: errorStack,
+      fullError: error,
+    });
+    
+    // Provide more specific error messages based on common issues
+    let userFriendlyError = 'Failed to mint purchase';
+    if (errorMessage.includes('Admin private key')) {
+      userFriendlyError = 'Server configuration error: Admin private key not set. Please contact support.';
+    } else if (errorMessage.includes('contract IDs not configured')) {
+      userFriendlyError = 'Server configuration error: Contract IDs not configured. Please contact support.';
+    } else if (errorMessage.includes('Invalid admin private key')) {
+      userFriendlyError = 'Server configuration error: Invalid admin private key format. Please contact support.';
+    } else if (errorMessage.includes('insufficient') || errorMessage.includes('balance')) {
+      userFriendlyError = 'Insufficient funds in admin account to complete the transaction. Please contact support.';
+    } else if (errorMessage.includes('object not found') || errorMessage.includes('does not exist')) {
+      userFriendlyError = 'Contract object not found. The contract may not be deployed or configured correctly.';
+    } else if (errorMessage) {
+      userFriendlyError = errorMessage;
+    }
     
     return NextResponse.json(
       {
-        error: 'Failed to mint purchase',
+        error: userFriendlyError,
         details: errorMessage,
+        type: 'mint_purchase_error',
         stack: process.env.NODE_ENV === 'development' ? errorStack : undefined,
       },
       { status: 500 }

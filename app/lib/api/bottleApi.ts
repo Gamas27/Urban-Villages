@@ -108,9 +108,24 @@ export async function mintBottle(
     });
 
     if (!response.ok) {
-      const errorData = await response.json();
+      let errorData: any;
+      try {
+        errorData = await response.json();
+      } catch {
+        errorData = { error: `HTTP ${response.status}: ${response.statusText}` };
+      }
+      
+      // Use details if available, otherwise fall back to error message
+      const errorMessage = errorData.details || errorData.error || 'Failed to mint bottle';
+      
+      console.error('[bottleApi.mintBottle] API error:', {
+        status: response.status,
+        statusText: response.statusText,
+        error: errorData,
+      });
+      
       return createErrorResponse(
-        errorData.error || errorData.details || 'Failed to mint bottle',
+        errorMessage,
         ApiErrorCode.UNKNOWN
       );
     }
