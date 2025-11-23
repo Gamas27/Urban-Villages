@@ -145,7 +145,7 @@ export async function registerNamespace(
     signAndExecute(
       { transaction: tx },
       {
-        onSuccess: async ({ digest }) => {
+        onSuccess: async ({ digest }: { digest: string }) => {
           try {
             await suiClient.waitForTransaction({ digest });
             resolve(digest);
@@ -153,7 +153,7 @@ export async function registerNamespace(
             reject(error);
           }
         },
-        onError: (error) => {
+        onError: (error: any) => {
           reject(error);
         },
       }
