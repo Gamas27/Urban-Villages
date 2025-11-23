@@ -267,7 +267,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                   value={username}
                   onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, ''))}
                   placeholder="Enter username"
-                  className="w-full p-4 border-2 border-gray-200 rounded-2xl focus:border-purple-500 focus:ring-4 focus:ring-purple-100 focus:outline-none transition-all text-lg"
+                  className="w-full p-4 border-2 border-gray-200 rounded-2xl focus:border-purple-500 focus:ring-4 focus:ring-purple-100 focus:outline-none transition-all text-lg text-gray-900 placeholder:text-gray-400"
                   maxLength={20}
                 />
                 <p className="text-xs text-gray-500 mt-2">
@@ -277,11 +277,13 @@ export function Onboarding({ onComplete }: OnboardingProps) {
 
               <div className="bg-gradient-to-br from-purple-50 via-orange-50 to-pink-50 p-6 rounded-2xl border-2 border-purple-200/50">
                 <p className="text-xs text-gray-600 mb-3 font-medium uppercase tracking-wide">Your SUI Namespace</p>
-                <p className="text-3xl font-mono font-bold">
-                  <span className="text-gray-400">@</span>
-                  <span className="text-purple-600">{username || 'username'}</span>
-                  <span className="text-gray-400">.{selectedVillage.id}</span>
-                </p>
+                <div className="overflow-hidden">
+                  <p className="text-2xl sm:text-3xl font-mono font-bold break-words">
+                    <span className="text-gray-400">@</span>
+                    <span className="text-purple-600 break-all">{username || 'username'}</span>
+                    <span className="text-gray-400">.{selectedVillage.id}</span>
+                  </p>
+                </div>
                 {username && username.length >= 3 && (
                   <div className="mt-4 flex items-center gap-2 text-sm text-green-600">
                     <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />

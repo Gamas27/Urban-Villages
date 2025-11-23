@@ -193,7 +193,7 @@ export function Profile() {
             )}
             <Button
               variant="outline"
-              className="border-2"
+              className="border-2 text-gray-900 hover:text-gray-900"
             >
               Edit Profile
             </Button>
