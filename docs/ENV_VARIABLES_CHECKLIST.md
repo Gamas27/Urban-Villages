@@ -56,14 +56,15 @@ NEXT_PUBLIC_BOTTLE_ADMIN_CAP_ID=0xd4df8247a68009ee730b405f38f62f49d7b07a5644b545
 
 #### 5. Admin Private Key (Backend Only)
 ```env
-ADMIN_PRIVATE_KEY=<base64-encoded-private-key>
+ADMIN_PRIVATE_KEY=<suiprivkey...-or-base64-encoded-private-key>
 ```
 - **Status:** ⚠️ NEEDS TO BE SET
 - **Used in:** `app/api/mint-purchase/route.ts` (server-side only)
 - **Required:** Yes - Purchase → Mint flow won't work without this
 - **Security:** ⚠️ NEVER expose this to frontend! Backend only!
+- **Format:** Supports both Bech32 format (suiprivkey...) and base64 format
 - **Key Scheme:** Supports both Ed25519 and secp256k1 (deployer uses secp256k1)
-- **How to get:** Export from the wallet that deployed contracts
+- **How to get:** Export from the wallet that deployed contracts using `sui keytool export`
 
 ---
 
@@ -186,18 +187,19 @@ NEXT_PUBLIC_BOTTLE_ADMIN_CAP_ID=0xd4df8247a68009ee730b405f38f62f49d7b07a5644b545
 #   (Look for the key that matches deployer address: 0x951ffaa17abaf3202acf52125d711df9f71f318c0772a08daeaf6d1d978b6f2f)
 #   Note: The deployer key is secp256k1 (keyScheme: secp256k1), which is supported!
 #
-# Step 2: Export the private key in base64 format
-#   sui keytool export --key-identity <key-alias> --key-encoding base64
-#   (Copy the output - this is your ADMIN_PRIVATE_KEY)
-#   Example: sui keytool export --key-identity intelligent-avanturine --key-encoding base64
+# Step 2: Export the private key (outputs Bech32 format)
+#   sui keytool export --key-identity <key-alias>
+#   Example: sui keytool export --key-identity intelligent-avanturine
+#   (Copy the entire output including "suiprivkey" prefix - this is your ADMIN_PRIVATE_KEY)
 #
 # Step 3: Verify the exported key matches the deployer address
 #   sui keytool derive-address --key-identity <key-alias>
 #   (Should show: 0x951ffaa17abaf3202acf52125d711df9f71f318c0772a08daeaf6d1d978b6f2f)
 #
-# Step 4: Paste the base64 key below (no quotes, no spaces)
-#   Note: Both Ed25519 and secp256k1 key schemes are supported
-ADMIN_PRIVATE_KEY=<base64-encoded-private-key>
+# Step 4: Paste the key below (no quotes, no spaces)
+#   Note: Both Bech32 format (suiprivkey...) and base64 format are supported
+#   Both Ed25519 and secp256k1 key schemes are supported
+ADMIN_PRIVATE_KEY=<suiprivkey...-or-base64-encoded-private-key>
 
 # ============================================
 # ENOKI CONFIGURATION
@@ -291,10 +293,11 @@ sui keytool list
 sui keytool derive-address --key-identity <key-alias>
 # Should show: 0x951ffaa17abaf3202acf52125d711df9f71f318c0772a08daeaf6d1d978b6f2f
 
-# Step 3: Export the private key in base64 format
-sui keytool export --key-identity <key-alias> --key-encoding base64
-# Example: sui keytool export --key-identity intelligent-avanturine --key-encoding base64
-# Copy the output and paste it as ADMIN_PRIVATE_KEY in .env.local
+# Step 3: Export the private key (outputs Bech32 format)
+sui keytool export --key-identity <key-alias>
+# Example: sui keytool export --key-identity intelligent-avanturine
+# Copy the entire output (starts with "suiprivkey") and paste it as ADMIN_PRIVATE_KEY in .env.local
+# Note: The code supports both Bech32 format (suiprivkey...) and base64 format
 # Note: Both Ed25519 and secp256k1 keys work - the code auto-detects the scheme
 ```
 

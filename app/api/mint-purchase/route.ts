@@ -3,8 +3,9 @@ import { Transaction } from '@mysten/sui/transactions';
 import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { Secp256k1Keypair } from '@mysten/sui/keypairs/secp256k1';
-import { fromB64 } from '@mysten/sui/utils';
+import { fromB64, toB64 } from '@mysten/sui/utils';
 import type { Keypair } from '@mysten/sui/cryptography';
+import { bech32 } from 'bech32';
 
 /**
  * API Route for Minting Bottle NFT and CORK Tokens on Purchase
@@ -93,28 +94,59 @@ export async function POST(req: NextRequest) {
     }
 
     // Load admin keypair - support both Ed25519 and secp256k1
-    // Try Ed25519 first, then fall back to secp256k1
+    // Also support both Bech32 (suiprivkey...) and base64 formats
     let keypair: Keypair;
     let adminAddress: string;
     
+    // Check if key is in Bech32 format (starts with "suiprivkey")
+    const isBech32 = adminPrivateKey.startsWith('suiprivkey');
+    
     try {
-      // Try Ed25519 first
-      keypair = Ed25519Keypair.fromSecretKey(fromB64(adminPrivateKey));
-      adminAddress = keypair.toSuiAddress();
-    } catch (ed25519Error) {
-      try {
-        // Fall back to secp256k1
-        keypair = Secp256k1Keypair.fromSecretKey(fromB64(adminPrivateKey));
+      if (isBech32) {
+        // Parse Bech32 format: suiprivkey<bech32-encoded-data>
+        // The Bech32-encoded data contains: flag byte (0x00=Ed25519, 0x01=secp256k1) + private key bytes
+        const bech32Data = adminPrivateKey.slice('suiprivkey'.length);
+        const decoded = bech32.decode(bech32Data);
+        // Convert Bech32 words to bytes
+        const data = Buffer.from(bech32.fromWords(decoded.words));
+        
+        // First byte is the flag: 0x00 = Ed25519, 0x01 = secp256k1
+        const flag = data[0];
+        const secretKeyBytes = data.slice(1);
+        const secretKeyBase64 = toB64(new Uint8Array(secretKeyBytes));
+        
+        if (flag === 0x00) {
+          // Ed25519
+          keypair = Ed25519Keypair.fromSecretKey(fromB64(secretKeyBase64));
+        } else if (flag === 0x01) {
+          // secp256k1
+          keypair = Secp256k1Keypair.fromSecretKey(fromB64(secretKeyBase64));
+        } else {
+          throw new Error(`Unknown key scheme flag: ${flag}`);
+        }
         adminAddress = keypair.toSuiAddress();
-      } catch (secp256k1Error) {
-        return NextResponse.json(
-          { 
-            error: 'Invalid admin private key format. Key must be base64-encoded Ed25519 or secp256k1 private key.',
-            details: 'Failed to load keypair with both Ed25519 and secp256k1 schemes.'
-          },
-          { status: 500 }
-        );
+      } else {
+        // Base64 format - try Ed25519 first, then secp256k1
+        try {
+          keypair = Ed25519Keypair.fromSecretKey(fromB64(adminPrivateKey));
+          adminAddress = keypair.toSuiAddress();
+        } catch (ed25519Error) {
+          keypair = Secp256k1Keypair.fromSecretKey(fromB64(adminPrivateKey));
+          adminAddress = keypair.toSuiAddress();
+        }
       }
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      return NextResponse.json(
+        { 
+          error: 'Invalid admin private key format.',
+          details: isBech32 
+            ? `Failed to parse Bech32 key: ${errorMessage}`
+            : `Failed to parse base64 key: ${errorMessage}. Key must be base64-encoded Ed25519 or secp256k1 private key, or Bech32 format (suiprivkey...).`,
+          hint: 'Export with: sui keytool export --key-identity <alias>'
+        },
+        { status: 500 }
+      );
     }
 
     // Create a Programmable Transaction Block that mints both NFT and CORK tokens
