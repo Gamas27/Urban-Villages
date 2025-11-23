@@ -105,7 +105,9 @@ export async function registerNamespace(
   // Check availability first
   const isAvailable = await checkNamespaceAvailability(username, village);
   if (!isAvailable) {
-    throw new Error(`Namespace ${formatNamespace(username, village)} is already taken`);
+    const namespaceStr = formatNamespace(username, village);
+    console.warn(`[registerNamespace] Namespace ${namespaceStr} is already taken`);
+    throw new Error(`Namespace ${namespaceStr} is already taken. Please choose a different username or village.`);
   }
 
   // Create transaction
@@ -154,7 +156,18 @@ export async function registerNamespace(
           }
         },
         onError: (error: any) => {
-          reject(error);
+          // Provide better error messages for common issues
+          const errorMsg = error?.message || String(error);
+          console.error('[registerNamespace] Transaction failed:', error);
+          
+          if (errorMsg.includes('MoveAbort') && errorMsg.includes('0)')) {
+            // Abort code 0 = ENamespaceAlreadyExists
+            reject(new Error(`Namespace ${formatNamespace(username, village)} is already taken. Please choose a different username or village.`));
+          } else if (errorMsg.includes('could not automatically determine')) {
+            reject(new Error(`Transaction failed: ${errorMsg}. This may indicate the namespace already exists or the contract is not properly deployed.`));
+          } else {
+            reject(error);
+          }
         },
       }
     );
