@@ -53,7 +53,7 @@ export function useEnokiWalrusUpload() {
    * Upload a file to Walrus using current wallet (Enoki or regular)
    * Returns: { blobId, url, metadataId }
    * 
-   * Matches template pattern exactly - simple and reliable
+   * Optimized for speed and reliability - template pattern with step 4 retry logic
    */
   const uploadFile = async (file: File): Promise<UploadResult | null> => {
     if (!currentAccount) {
@@ -144,10 +144,53 @@ export function useEnokiWalrusUpload() {
         );
       });
 
-      // Step 4: Upload data to storage nodes
+      // Step 4: Upload data to storage nodes (OPTIMIZED - retry logic for reliability)
+      // This is the bottleneck - we retry up to 3 times with exponential backoff
       console.log('[Walrus] Step 4: Uploading to storage nodes, digest:', registerDigest!);
-      await flow.upload({ digest: registerDigest! });
-      console.log('[Walrus] Step 4: Upload complete');
+      
+      let uploadSuccess = false;
+      let lastError: Error | null = null;
+      const maxRetries = 3;
+      
+      for (let attempt = 0; attempt < maxRetries && !uploadSuccess; attempt++) {
+        try {
+          if (attempt > 0) {
+            // Exponential backoff: 2s, 4s
+            const delay = Math.pow(2, attempt) * 1000;
+            console.log(`[Walrus] Step 4: Retry attempt ${attempt + 1}/${maxRetries} after ${delay}ms`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+          }
+          
+          // Upload with timeout (dynamic based on file size: 30s base + 1s per MB)
+          const fileSizeMB = file.size / (1024 * 1024);
+          const timeoutMs = Math.min(30000 + (fileSizeMB * 1000), 120000); // Max 2 minutes
+          
+          const uploadPromise = flow.upload({ digest: registerDigest! });
+          const timeoutPromise = new Promise<never>((_, reject) => {
+            setTimeout(() => reject(new Error(`Upload timeout after ${timeoutMs}ms`)), timeoutMs);
+          });
+          
+          await Promise.race([uploadPromise, timeoutPromise]);
+          uploadSuccess = true;
+          console.log('[Walrus] Step 4: Upload complete');
+        } catch (err) {
+          lastError = err instanceof Error ? err : new Error('Upload failed');
+          console.warn(`[Walrus] Step 4: Attempt ${attempt + 1} failed:`, lastError.message);
+          
+          // Don't retry on certain errors (network errors are retryable, validation errors are not)
+          if (lastError.message.includes('timeout') || lastError.message.includes('network') || lastError.message.includes('ECONNREFUSED')) {
+            // Retryable - continue loop
+            continue;
+          } else {
+            // Non-retryable error - break immediately
+            break;
+          }
+        }
+      }
+      
+      if (!uploadSuccess) {
+        throw lastError || new Error('Upload failed after retries');
+      }
 
       // Step 5: Certify (returns transaction)
       console.log('[Walrus] Step 5: Creating certify transaction...');

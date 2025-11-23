@@ -41,6 +41,8 @@ export async function createWalrusService(
     uploadRelayUrl: network === 'testnet'
       ? 'https://upload-relay.testnet.walrus.space'
       : 'https://upload-relay.mainnet.walrus.space',
+    // Optimize for performance
+    // The relay handles connection pooling and parallel uploads automatically
   };
   
   const client = new WalrusClient(clientConfig);

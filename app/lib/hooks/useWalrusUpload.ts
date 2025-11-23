@@ -112,8 +112,14 @@ export function useWalrusUpload() {
         );
       });
 
-      // Step 4: Upload data to storage nodes
-      await flow.upload({ digest: registerDigest! });
+      // Step 4: Upload data to storage nodes (optimized with timeout)
+      // This is often the slowest step, so we add a longer timeout and better error handling
+      const uploadPromise = flow.upload({ digest: registerDigest! });
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Storage upload timeout - file may be too large or network is slow')), 60000);
+      });
+      
+      await Promise.race([uploadPromise, timeoutPromise]);
 
       // Step 5: Certify (returns transaction)
       const certifyTx = flow.certify();

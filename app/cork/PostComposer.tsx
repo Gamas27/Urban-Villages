@@ -170,11 +170,11 @@ export function PostComposer({ onClose, onPost }: PostComposerProps) {
           <button
             onClick={onClose}
             disabled={posting}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            className="p-2 hover:bg-gray-100 rounded-full transition-colors disabled:opacity-50"
           >
-            <X className="w-6 h-6" />
+            <X className="w-6 h-6 text-gray-700" />
           </button>
-          <h2 className="text-lg">New Post</h2>
+          <h2 className="text-lg font-semibold text-gray-900">New Post</h2>
           <Button
             onClick={handlePost}
             disabled={!canPost}
@@ -222,7 +222,7 @@ export function PostComposer({ onClose, onPost }: PostComposerProps) {
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="What's happening in your village?"
-            className="w-full min-h-[150px] p-4 border-2 border-gray-200 rounded-xl resize-none focus:border-purple-500 focus:outline-none text-lg"
+            className="w-full min-h-[150px] p-4 border-2 border-gray-200 rounded-xl resize-none focus:border-purple-500 focus:outline-none text-lg text-gray-900 placeholder:text-gray-400 disabled:text-gray-500 disabled:bg-gray-50"
             maxLength={280}
             disabled={posting}
           />

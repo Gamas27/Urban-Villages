@@ -151,8 +151,52 @@ export function usePostUpload() {
         );
       });
 
-      // Step 4: Upload data to storage nodes
-      await flow.upload({ digest: registerDigest! });
+      // Step 4: Upload data to storage nodes (OPTIMIZED - retry logic for reliability)
+      // This is the bottleneck - we retry up to 3 times with exponential backoff
+      console.log('[Walrus Post] Step 4: Uploading to storage nodes, digest:', registerDigest!);
+      
+      let uploadSuccess = false;
+      let lastError: Error | null = null;
+      const maxRetries = 3;
+      
+      for (let attempt = 0; attempt < maxRetries && !uploadSuccess; attempt++) {
+        try {
+          if (attempt > 0) {
+            // Exponential backoff: 2s, 4s
+            const delay = Math.pow(2, attempt) * 1000;
+            console.log(`[Walrus Post] Step 4: Retry attempt ${attempt + 1}/${maxRetries} after ${delay}ms`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+          }
+          
+          // Upload with timeout (30s for JSON posts - they're small)
+          const timeoutMs = 30000;
+          
+          const uploadPromise = flow.upload({ digest: registerDigest! });
+          const timeoutPromise = new Promise<never>((_, reject) => {
+            setTimeout(() => reject(new Error(`Upload timeout after ${timeoutMs}ms`)), timeoutMs);
+          });
+          
+          await Promise.race([uploadPromise, timeoutPromise]);
+          uploadSuccess = true;
+          console.log('[Walrus Post] Step 4: Upload complete');
+        } catch (err) {
+          lastError = err instanceof Error ? err : new Error('Upload failed');
+          console.warn(`[Walrus Post] Step 4: Attempt ${attempt + 1} failed:`, lastError.message);
+          
+          // Don't retry on certain errors
+          if (lastError.message.includes('timeout') || lastError.message.includes('network') || lastError.message.includes('ECONNREFUSED')) {
+            // Retryable - continue loop
+            continue;
+          } else {
+            // Non-retryable error - break immediately
+            break;
+          }
+        }
+      }
+      
+      if (!uploadSuccess) {
+        throw lastError || new Error('Upload failed after retries');
+      }
 
       // Step 5: Certify (returns transaction)
       const certifyTx = flow.certify();

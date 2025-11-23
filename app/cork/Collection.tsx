@@ -60,8 +60,8 @@ export function Collection({ village }: CollectionProps) {
 
       try {
         const result = await bottleApi.getOwnedBottlesByAddress(account.address);
-          
-          if (result.success && result.data) {
+        
+        if (result.success && result.data) {
             if (result.data.length === 0) {
               // No bottles owned - show empty state
               setNftBottles([]);
@@ -69,7 +69,7 @@ export function Collection({ village }: CollectionProps) {
               return;
             }
             
-            // Transform API data to NFTBottle format
+          // Transform API data to NFTBottle format
             const transformedBottles: NFTBottle[] = result.data.map((bottle: any, index: number) => {
               // Extract blobId from imageUrl if it's a Walrus URL
               let imageBlobId: string | undefined;
@@ -114,7 +114,7 @@ export function Collection({ village }: CollectionProps) {
                 qrCode: bottle.qrCode || '',
                 rarity,
                 tokenId: bottle.objectId || '',
-                attributes: {
+      attributes: {
                   vineyard: bottle.winery || 'Unknown Winery',
                   grapes: bottle.wineType || 'Unknown',
                   bottles: `${bottleNum}/${totalSupply}`,
@@ -332,7 +332,7 @@ export function Collection({ village }: CollectionProps) {
               placeholder="Search your collection..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="w-full pl-10 pr-4 py-3 bg-white border border-gray-200 rounded-xl text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             />
           </div>
           <button
@@ -369,9 +369,9 @@ export function Collection({ village }: CollectionProps) {
                       ) : (
                         <img 
                           src={bottle.image || 'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=400'} 
-                          alt={bottle.name}
-                          className="w-full h-full object-cover"
-                        />
+                        alt={bottle.name}
+                        className="w-full h-full object-cover"
+                      />
                       )}
                       <div className="absolute top-2 left-2 w-6 h-6 bg-white/90 backdrop-blur rounded-full flex items-center justify-center text-sm">
                         {rarityStyle.icon}
@@ -457,9 +457,9 @@ export function Collection({ village }: CollectionProps) {
                     ) : (
                       <img 
                         src={bottle.image || 'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=400'} 
-                        alt={bottle.name}
-                        className="w-full h-full object-cover"
-                      />
+                      alt={bottle.name}
+                      className="w-full h-full object-cover"
+                    />
                     )}
                     <div className="absolute top-2 left-2 w-7 h-7 bg-white/90 backdrop-blur rounded-full flex items-center justify-center text-sm">
                       {rarityStyle.icon}
@@ -531,9 +531,9 @@ export function Collection({ village }: CollectionProps) {
               ) : (
                 <img 
                   src={selectedBottle.image || 'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=400'} 
-                  alt={selectedBottle.name}
-                  className="w-full h-full object-cover"
-                />
+                alt={selectedBottle.name}
+                className="w-full h-full object-cover"
+              />
               )}
               <button
                 onClick={() => setSelectedBottle(null)}

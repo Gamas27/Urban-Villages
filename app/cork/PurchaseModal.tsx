@@ -131,7 +131,7 @@ export function PurchaseModal({ wine, onClose, onSuccess }: PurchaseModalProps) 
       <div className="bg-white w-full md:max-w-lg md:rounded-2xl max-h-screen overflow-y-auto pb-safe">
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between">
-          <h2 className="text-lg">
+          <h2 className="text-lg font-semibold text-gray-900">
             {step === 'confirm' && 'Confirm Purchase'}
             {step === 'minting' && 'Minting NFT...'}
             {step === 'success' && 'Purchase Complete!'}
@@ -141,7 +141,7 @@ export function PurchaseModal({ wine, onClose, onSuccess }: PurchaseModalProps) 
             disabled={step === 'minting'}
             className="p-2 hover:bg-gray-100 rounded-full transition-colors disabled:opacity-50"
           >
-            <X className="w-6 h-6" />
+            <X className="w-6 h-6 text-gray-700" />
           </button>
         </div>
 

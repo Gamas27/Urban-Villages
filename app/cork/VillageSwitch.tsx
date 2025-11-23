@@ -15,12 +15,12 @@ export function VillageSwitch({ currentVillage, onSelect, onClose }: VillageSwit
       <div className="bg-white w-full md:max-w-2xl rounded-t-3xl md:rounded-3xl max-h-[90vh] overflow-y-auto pb-safe">
         {/* Header */}
         <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between rounded-t-3xl">
-          <h2 className="text-xl">Switch Village</h2>
+          <h2 className="text-xl font-semibold text-gray-900">Switch Village</h2>
           <button
             onClick={onClose}
             className="p-2 hover:bg-gray-100 rounded-full transition-colors"
           >
-            <X className="w-6 h-6" />
+            <X className="w-6 h-6 text-gray-700" />
           </button>
         </div>
 
