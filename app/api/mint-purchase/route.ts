@@ -111,7 +111,6 @@ export async function POST(req: NextRequest) {
     });
 
     // Step 2: Mint Bottle NFT
-    const customTextArg = customText || '';
     tx.moveCall({
       target: `${bottlePackageId}::bottle_nft::mint_bottle`,
       arguments: [
@@ -124,7 +123,8 @@ export async function POST(req: NextRequest) {
         tx.pure.string(wineType),         // wine_type
         tx.pure.u64(Number(bottleNumber || 1)), // bottle_number
         tx.pure.u64(Number(totalSupply || 500)), // total_supply
-        tx.pure.option('string', customTextArg ? tx.pure.string(customTextArg) : null), // custom_text
+        // @ts-expect-error - tx.pure.option type definition issue with transaction arguments
+        tx.pure.option('string', customText ? tx.pure.string(customText) : null), // custom_text
         tx.pure.string(imageUrl || ''),    // image_url
         tx.pure.string(qrCode || `QR-${Date.now()}`), // qr_code
         tx.pure.address(recipient),       // recipient
