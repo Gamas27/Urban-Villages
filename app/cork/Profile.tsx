@@ -7,7 +7,7 @@ import { useUserProfile, useUserNamespace, useUserVillage, useUserStore } from '
 import { useBackendProfile, useBackendStore } from '@/lib/stores/backendStore';
 import { useBlockchainStore } from '@/lib/stores/blockchainStore';
 import { WalrusImage } from '@/components/WalrusImage';
-import { useCurrentAccount, useSuiClientQuery } from '@mysten/dapp-kit';
+import { useCurrentAccount, useSuiClientQuery, useCurrentWallet } from '@mysten/dapp-kit';
 import { useMemo, useEffect, useState } from 'react';
 import { verifyWalrusBlob } from '@/lib/walrus';
 import { saveUserProfile } from '@/lib/api/userTracking';
@@ -17,6 +17,7 @@ export function Profile() {
   const namespace = useUserNamespace();
   const userVillage = useUserVillage();
   const account = useCurrentAccount();
+  const wallet = useCurrentWallet();
   const backendProfile = useBackendProfile();
   const { fetchBackendProfile, reset: resetBackendStore } = useBackendStore();
   const userStore = useUserStore();
@@ -312,22 +313,37 @@ export function Profile() {
               <Button
                 variant="destructive"
                 className="flex-1"
-                onClick={() => {
+                onClick={async () => {
+                  console.log('[Profile] Starting app reset...');
+                  
+                  // Disconnect wallet first (this will clear Enoki/Google login)
+                  if (wallet) {
+                    try {
+                      await wallet.disconnect();
+                      console.log('[Profile] ✅ Wallet disconnected');
+                    } catch (error) {
+                      console.warn('[Profile] Error disconnecting wallet:', error);
+                    }
+                  }
+                  
                   // Reset all stores
                   resetUserStore();
                   resetBackendStore();
                   clearTransactions();
                   
-                  // Clear any additional localStorage/sessionStorage
+                  // Clear all storage
                   if (typeof window !== 'undefined') {
                     sessionStorage.clear();
-                    // Keep only essential items if any
+                    localStorage.clear();
+                    console.log('[Profile] ✅ Storage cleared');
                   }
                   
-                  console.log('[Profile] App reset - returning to onboarding');
+                  console.log('[Profile] ✅ App reset complete - reloading to show onboarding');
                   
-                  // Reload page to show onboarding
-                  window.location.reload();
+                  // Small delay to ensure disconnect completes, then reload
+                  setTimeout(() => {
+                    window.location.reload();
+                  }, 500);
                 }}
               >
                 Yes, Reset App
