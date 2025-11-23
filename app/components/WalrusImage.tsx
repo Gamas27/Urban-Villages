@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { getWalrusUrl } from '@/lib/walrus';
 import { getPlaceholderPostImageUrl } from '@/lib/placeholders';
 
@@ -25,21 +25,62 @@ export function WalrusImage({
 }: WalrusImageProps) {
   const [error, setError] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
+  const [loaded, setLoaded] = useState(false);
   const url = getWalrusUrl(blobId, network);
+
+  // Log when component mounts and starts loading
+  useEffect(() => {
+    console.log(`[WalrusImage] Loading ${type} image:`, {
+      blobId,
+      url,
+      network,
+      type,
+      alt,
+    });
+  }, [blobId, url, network, type, alt]);
+
+  // Handle successful image load
+  const handleLoad = () => {
+    if (!loaded) {
+      setLoaded(true);
+      console.log(`[WalrusImage] ✅ Successfully loaded ${type} image from Walrus:`, {
+        blobId,
+        url,
+        type,
+        alt,
+      });
+    }
+  };
 
   // Retry once before showing placeholder (in case of temporary network issues)
   const handleError = () => {
     if (retryCount < 1) {
-      setRetryCount(prev => prev + 1);
+      const newRetryCount = retryCount + 1;
+      setRetryCount(newRetryCount);
+      console.warn(`[WalrusImage] ⚠️ Failed to load ${type} image (attempt ${newRetryCount}), retrying...`, {
+        blobId,
+        url,
+        type,
+        alt,
+      });
       // Force reload by updating src
       setTimeout(() => {
         const img = document.querySelector(`img[data-blob-id="${blobId}"]`) as HTMLImageElement;
         if (img) {
-          img.src = url + '?retry=' + Date.now();
+          const retryUrl = url + '?retry=' + Date.now();
+          console.log(`[WalrusImage] Retrying load from:`, retryUrl);
+          img.src = retryUrl;
         }
       }, 1000);
     } else {
       setError(true);
+      console.error(`[WalrusImage] ❌ Failed to load ${type} image after retries, showing fallback:`, {
+        blobId,
+        url,
+        type,
+        alt,
+        retryCount: retryCount + 1,
+      });
       // Call parent error handler if provided
       if (onError) {
         onError();
@@ -51,6 +92,10 @@ export function WalrusImage({
   if (error && type === 'profile') {
     // Extract size classes from className, but replace image-specific classes
     const baseClasses = className?.replace(/\bobject-cover\b/g, '').trim() || '';
+    console.log(`[WalrusImage] Showing profile fallback (gradient circle) for:`, {
+      blobId,
+      initial: initial || alt[0]?.toUpperCase() || 'U',
+    });
     return (
       <div 
         className={`${baseClasses} bg-gradient-to-br from-purple-400 to-orange-400 flex items-center justify-center text-3xl font-bold text-white`}
@@ -63,6 +108,7 @@ export function WalrusImage({
 
   // For posts, use external placeholder (or could be improved to use local fallback)
   if (error && type === 'post') {
+    console.log(`[WalrusImage] Showing post placeholder for:`, { blobId, alt });
     return (
       <img
         src={getPlaceholderPostImageUrl()}
@@ -79,6 +125,7 @@ export function WalrusImage({
       alt={alt}
       className={className}
       data-blob-id={blobId}
+      onLoad={handleLoad}
       onError={handleError}
       loading="lazy"
     />

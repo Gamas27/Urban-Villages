@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Home, ShoppingBag, PlusCircle, User, MapPin, Package, Users, Bell } from 'lucide-react';
+import { Home, ShoppingBag, PlusCircle, User, MapPin, Package, Users } from 'lucide-react';
 import { Feed } from './Feed';
 import { Shop } from './Shop';
 import { Profile } from './Profile';
@@ -49,12 +49,6 @@ export function MainApp() {
     });
   }, [account?.address, refreshAll, fetchBackendProfile]);
 
-  // Mock notification counts
-  const notifications = {
-    friends: 2, // 2 pending gifts/tokens
-    feed: 0,
-    shop: 0,
-  };
 
   const handlePost = () => {
     setShowPostComposer(false);
@@ -121,17 +115,9 @@ export function MainApp() {
           </div>
           
           <div className="flex items-center gap-2">
-            <button className="relative p-2 bg-white bg-opacity-20 backdrop-blur rounded-full hover:bg-opacity-30 transition-all">
-              <Bell className="w-5 h-5" />
-              {(notifications.friends + notifications.feed + notifications.shop) > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                  {notifications.friends + notifications.feed + notifications.shop}
-                </span>
-              )}
-            </button>
             <button
               onClick={() => setShowVillageSwitch(true)}
-              className="flex items-center gap-2 bg-white bg-opacity-20 backdrop-blur px-4 py-2 rounded-full hover:bg-opacity-30 transition-all"
+              className="flex items-center gap-2 bg-black bg-opacity-20 backdrop-blur px-4 py-2 rounded-full hover:bg-opacity-30 transition-all border border-white border-opacity-20"
             >
               <MapPin className="w-4 h-4" />
               <span className="text-sm">{village?.name || 'Village'}</span>
@@ -185,20 +171,13 @@ export function MainApp() {
 
           <button
             onClick={() => setActiveTab('friends')}
-            className={`relative flex flex-col items-center justify-center gap-1 p-3 min-w-[64px] transition-colors duration-200 ${
+            className={`flex flex-col items-center justify-center gap-1 p-3 min-w-[64px] transition-colors duration-200 ${
               activeTab === 'friends'
                 ? 'text-purple-600'
                 : 'text-gray-500'
             }`}
           >
-            <div className="relative">
-              <Users className={`w-6 h-6 transition-all duration-200 ${activeTab === 'friends' ? 'fill-purple-600' : ''}`} />
-              {notifications.friends > 0 && (
-                <span className="absolute -top-1 -right-2 w-4 h-4 bg-red-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center animate-pulse">
-                  {notifications.friends}
-                </span>
-              )}
-            </div>
+            <Users className={`w-6 h-6 transition-all duration-200 ${activeTab === 'friends' ? 'fill-purple-600' : ''}`} />
             <span className={`text-[10px] ${activeTab === 'friends' ? 'font-semibold' : 'font-medium'}`}>Friends</span>
           </button>
 

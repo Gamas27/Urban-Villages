@@ -20,7 +20,19 @@ export function Profile() {
   // Fetch backend profile when wallet is connected
   useEffect(() => {
     if (account?.address) {
-      fetchBackendProfile(account.address);
+      console.log('[Profile] Fetching backend profile for wallet:', account.address);
+      fetchBackendProfile(account.address).then((backendProfile) => {
+        if (backendProfile) {
+          console.log('[Profile] ✅ Backend profile loaded:', {
+            username: backendProfile.username,
+            village: backendProfile.village,
+            profilePicBlobId: backendProfile.profilePicBlobId,
+            namespaceId: backendProfile.namespaceId,
+          });
+        } else {
+          console.log('[Profile] ℹ️ No backend profile found (user may not have completed onboarding)');
+        }
+      });
     }
   }, [account?.address, fetchBackendProfile]);
   
@@ -28,12 +40,27 @@ export function Profile() {
   const mergedProfile = useMemo(() => {
     if (!profile) return null;
     
-    return {
+    const merged = {
       ...profile,
       // Use backend profilePicBlobId if available (more up-to-date)
       profilePicBlobId: backendProfile?.profilePicBlobId || profile.profilePicBlobId,
     };
+    
+    return merged;
   }, [profile, backendProfile]);
+
+  // Log when profilePicBlobId is available for rendering
+  useEffect(() => {
+    if (mergedProfile?.profilePicBlobId) {
+      console.log('[Profile] 📸 Profile picture blobId available, will render from Walrus:', {
+        blobId: mergedProfile.profilePicBlobId,
+        username: mergedProfile.username,
+        source: backendProfile?.profilePicBlobId ? 'backend' : 'userStore',
+      });
+    } else if (mergedProfile) {
+      console.log('[Profile] ℹ️ No profilePicBlobId, will show gradient fallback');
+    }
+  }, [mergedProfile?.profilePicBlobId, mergedProfile?.username, backendProfile?.profilePicBlobId]);
   
   const village = getVillageById(userVillage || 'lisbon');
   
