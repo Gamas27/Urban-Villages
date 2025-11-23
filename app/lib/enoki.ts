@@ -65,41 +65,56 @@ export function initEnoki(config?: Partial<EnokiConfig>): void {
 
     // Register Enoki wallets
     // This makes Enoki wallets available in the wallet selector
-    const providers = finalConfig.googleClientId
-      ? {
-          google: {
-            clientId: finalConfig.googleClientId,
-          },
-        }
-      : {};
+    // Only include providers if Google Client ID is configured
+    const providers: Partial<Record<'google', { clientId: string }>> | undefined = 
+      finalConfig.googleClientId
+        ? {
+            google: {
+              clientId: finalConfig.googleClientId,
+            },
+          }
+        : undefined;
 
-    console.log('🔧 Enoki config:', {
+    // Enhanced logging for debugging
+    const isProduction = typeof window !== 'undefined' && 
+      (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1');
+    
+    console.log('🔧 Enoki initialization:', {
+      environment: isProduction ? 'production' : 'development',
       network: finalConfig.network,
       hasApiKey: !!finalConfig.apiKey,
-      apiKeyPrefix: finalConfig.apiKey ? `${finalConfig.apiKey.substring(0, 20)}...` : 'not set',
+      apiKeyPrefix: finalConfig.apiKey ? `${finalConfig.apiKey.substring(0, 20)}...` : 'NOT SET',
       hasGoogleClientId: !!finalConfig.googleClientId,
-      googleClientId: finalConfig.googleClientId ? `${finalConfig.googleClientId.substring(0, 20)}...` : 'not set',
+      googleClientIdPrefix: finalConfig.googleClientId ? `${finalConfig.googleClientId.substring(0, 20)}...` : 'NOT SET',
+      providersConfigured: !!providers,
+      hostname: typeof window !== 'undefined' ? window.location.hostname : 'server',
     });
     
     if (!finalConfig.googleClientId) {
-      console.error('❌ Google Client ID is missing! This will cause 400 errors.');
+      console.error('❌ Google Client ID is missing! Google login will NOT appear.');
+      console.error('   Set NEXT_PUBLIC_GOOGLE_CLIENT_ID in your environment variables.');
+      if (isProduction) {
+        console.error('   For Vercel: Add it in Project Settings > Environment Variables');
+      } else {
+        console.error('   For local: Add it to .env.local file');
+      }
     }
 
+    // Register Enoki wallets with providers (or undefined if no Google Client ID)
     registerEnokiWallets({
       client: suiClient,
       network: finalConfig.network,
       apiKey: finalConfig.apiKey,
-      providers: providers as Partial<Record<string, { clientId: string }>>,
+      providers: providers as any, // Type assertion needed due to Enoki type definitions
     });
 
     enokiInitialized = true;
-    console.log('✅ Enoki initialized successfully');
     
-    if (!finalConfig.googleClientId) {
-      console.warn(
-        '⚠️ Google Client ID not configured. Google login will not be available.\n' +
-        '   Add NEXT_PUBLIC_GOOGLE_CLIENT_ID to .env.local and restart the server.'
-      );
+    if (finalConfig.googleClientId) {
+      console.log('✅ Enoki initialized successfully with Google login');
+    } else {
+      console.warn('⚠️ Enoki initialized but Google login is NOT available (missing Google Client ID)');
+      console.warn('   Users will only see regular wallet options (Sui Wallet, etc.)');
     }
   } catch (error) {
     console.error('❌ Failed to initialize Enoki:', error);
