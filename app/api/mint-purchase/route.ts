@@ -14,7 +14,8 @@ import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
  * AdminCap is owned by the deployer, so only the deployer can call mint functions.
  * 
  * Environment Variables Required:
- * - ADMIN_PRIVATE_KEY: Base64-encoded private key of the deployer (supports both Ed25519 and secp256k1)
+ * - ADMIN_PRIVATE_KEY: Private key of the deployer in Bech32 format (suiprivkey...) or base64 format
+ *   Supports both Ed25519 and secp256k1 key schemes
  * - NEXT_PUBLIC_CORK_TOKEN_PACKAGE_ID: Cork Token package ID
  * - NEXT_PUBLIC_CORK_TREASURY_ID: Cork Token Treasury ID
  * - NEXT_PUBLIC_CORK_ADMIN_CAP_ID: Cork Token AdminCap ID
@@ -107,12 +108,15 @@ export async function POST(req: NextRequest) {
         const { secretKey, scheme } = decodeSuiPrivateKey(adminPrivateKey);
         
         // Create keypair based on the scheme
-        if (scheme === 'ed25519') {
+        // Scheme values are: 'ED25519', 'Secp256k1', 'Secp256r1'
+        // Convert scheme to string for comparison (SignatureScheme is an enum)
+        const schemeStr = String(scheme);
+        if (schemeStr === 'ED25519') {
           keypair = Ed25519Keypair.fromSecretKey(secretKey);
-        } else if (scheme === 'secp256k1') {
+        } else if (schemeStr === 'Secp256k1') {
           keypair = Secp256k1Keypair.fromSecretKey(secretKey);
         } else {
-          throw new Error(`Unsupported key scheme: ${scheme} (expected 'ed25519' or 'secp256k1')`);
+          throw new Error(`Unsupported key scheme: ${schemeStr} (expected 'ED25519' or 'Secp256k1')`);
         }
         adminAddress = keypair.toSuiAddress();
       } else {
