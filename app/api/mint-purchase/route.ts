@@ -215,6 +215,10 @@ export async function POST(req: NextRequest) {
 
     // Create a Programmable Transaction Block that mints both NFT and CORK tokens
     const tx = new Transaction();
+    
+    // Set the sender address (required for transaction building)
+    // The sender is the admin account that will sign and execute the transaction
+    tx.setSender(adminAddress);
 
     // Step 1: Mint CORK tokens
     const microCork = toMicroCork(corkAmount || 50);
@@ -252,8 +256,13 @@ export async function POST(req: NextRequest) {
     });
 
     // Build, sign and execute transaction
-    console.log('[mint-purchase] 🔨 Building transaction...');
-    const txBytes = await tx.build({ client: suiClient });
+    console.log('[mint-purchase] 🔨 Building transaction...', {
+      sender: adminAddress,
+      recipient,
+    });
+    const txBytes = await tx.build({ 
+      client: suiClient,
+    });
     console.log('[mint-purchase] ✍️ Signing transaction...');
     const signedTransaction = await keypair.signTransaction(txBytes);
     
