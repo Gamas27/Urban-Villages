@@ -58,11 +58,23 @@ export default function CorkApp() {
       setError(null);
       
       try {
+        // Ensure account is available before proceeding
+        if (!account.address) {
+          throw new Error('Wallet account address is not available. Please ensure your wallet is connected.');
+        }
+        
+        console.log('[CorkApp] Registering namespace:', {
+          username: data.username,
+          village: data.village,
+          accountAddress: account.address,
+        });
+        
         const result = await namespaceApi.registerNamespace(
           data.username,
           data.village,
           data.profilePicBlobId,
-          signAndExecute
+          signAndExecute,
+          account.address
         );
         
         if (result.success && result.data) {

@@ -85,7 +85,8 @@ export async function registerNamespace(
   username: string,
   village: string,
   profilePicBlobId: string | undefined,
-  signAndExecute: (params: { transaction: Transaction }) => Promise<{ digest: string }>
+  signAndExecute: (params: { transaction: Transaction }) => Promise<{ digest: string }>,
+  sender?: string
 ): Promise<string> {
   // Validate inputs
   if (!username || !village) {
@@ -117,6 +118,13 @@ export async function registerNamespace(
       'Namespace contract not deployed yet. ' +
       'Set NEXT_PUBLIC_NAMESPACE_PACKAGE_ID and NEXT_PUBLIC_NAMESPACE_REGISTRY_ID in .env.local'
     );
+  }
+
+  // Set sender if provided (helps with transaction determination)
+  // Note: dapp-kit should automatically determine sender from connected wallet,
+  // but setting it explicitly can help with transaction building
+  if (sender && typeof (tx as any).setSender === 'function') {
+    (tx as any).setSender(sender);
   }
 
   // Format namespace string: username.village
