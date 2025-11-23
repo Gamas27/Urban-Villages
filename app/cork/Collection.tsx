@@ -1,10 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Package, QrCode, Sparkles, Trophy, Search, Filter, Grid3x3, LayoutList, Share2, Download, ExternalLink, Calendar, MapPin, Award } from 'lucide-react';
 import { MOCK_USER } from './data/mockData';
 import { getVillageById } from './data/villages';
 import { Button } from '@/components/ui/button';
+import { useCurrentAccount } from '@mysten/dapp-kit';
+import { bottleApi } from '@/lib/api';
+import { LoadingState, SkeletonCard } from '@/components/ui/LoadingState';
+import { WalrusImage } from '@/components/WalrusImage';
+import { isWalrusUrl } from '@/lib/placeholders';
 
 interface CollectionProps {
   village: string;
@@ -20,6 +25,7 @@ interface NFTBottle {
   vintage: number;
   mintDate: string;
   image: string;
+  imageBlobId?: string; // Walrus blobId if image is stored on Walrus
   qrCode: string;
   rarity: 'Common' | 'Rare' | 'Legendary';
   attributes: {
@@ -31,79 +37,109 @@ interface NFTBottle {
 }
 
 export function Collection({ village }: CollectionProps) {
+  const account = useCurrentAccount();
   const currentVillage = getVillageById(village);
   const [activeTab, setActiveTab] = useState<CollectionTab>('all');
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBottle, setSelectedBottle] = useState<NFTBottle | null>(null);
-  
-  // Mock NFT bottle collection
-  const nftBottles: NFTBottle[] = [
-    {
-      id: '1',
-      name: '2023 Orange Skin Contact',
-      village: 'lisbon',
-      vintage: 2023,
-      mintDate: '2024-11-15',
-      image: 'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=400',
-      qrCode: 'https://sui.io/nft/0x123...',
-      rarity: 'Rare',
-      tokenId: '0x1a2b3c4d5e6f',
-      attributes: {
-        vineyard: 'Quinta do Terroir',
-        grapes: 'Malvasia Fina',
-        bottles: '500/1000',
+  const [nftBottles, setNftBottles] = useState<NFTBottle[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch owned bottles on mount
+  useEffect(() => {
+    const fetchBottles = async () => {
+      if (!account) {
+        setLoading(false);
+        return;
       }
-    },
-    {
-      id: '2',
-      name: '2022 Natural Red Blend',
-      village: 'lisbon',
-      vintage: 2022,
-      mintDate: '2024-10-20',
-      image: 'https://images.unsplash.com/photo-1586370434639-0fe43b2d32d6?w=400',
-      qrCode: 'https://sui.io/nft/0x456...',
-      rarity: 'Common',
-      tokenId: '0x2b3c4d5e6f7a',
-      attributes: {
-        vineyard: 'Vinha Velha',
-        grapes: 'Touriga Nacional',
-        bottles: '1200/5000',
+
+      setLoading(true);
+      setError(null);
+
+      try {
+        const result = await bottleApi.getOwnedBottlesByAddress(account.address);
+        
+        if (result.success && result.data) {
+          if (result.data.length === 0) {
+            // No bottles owned - show empty state
+            setNftBottles([]);
+            setLoading(false);
+            return;
+          }
+          
+          // Transform API data to NFTBottle format
+          const transformedBottles: NFTBottle[] = result.data.map((bottle: any, index: number) => {
+            // Extract blobId from imageUrl if it's a Walrus URL
+            let imageBlobId: string | undefined;
+            let imageUrl = bottle.imageUrl || '';
+            
+            if (isWalrusUrl(imageUrl)) {
+              // Extract blobId from Walrus URL (format: https://aggregator.walrus-testnet.walrus.space/v1/{blobId})
+              const match = imageUrl.match(/\/v1\/([^/?]+)/);
+              if (match) {
+                imageBlobId = match[1];
+              }
+            }
+            
+            // Determine rarity based on bottle number vs total supply
+            const bottleNum = bottle.bottleNumber || 0;
+            const totalSupply = bottle.totalSupply || 1000;
+            const rarityRatio = bottleNum / totalSupply;
+            let rarity: 'Common' | 'Rare' | 'Legendary' = 'Common';
+            if (rarityRatio < 0.1) {
+              rarity = 'Legendary';
+            } else if (rarityRatio < 0.3) {
+              rarity = 'Rare';
+            }
+            
+            // Extract village from region or use default
+            const region = (bottle.region || '').toLowerCase();
+            let village = 'lisbon'; // default
+            if (region.includes('porto') || region.includes('douro')) {
+              village = 'porto';
+            } else if (region.includes('paris') || region.includes('france')) {
+              village = 'paris';
+            }
+            
+            return {
+              id: bottle.objectId || `bottle-${index}`,
+              name: bottle.name || 'Unknown Wine',
+              village,
+              vintage: bottle.vintage || new Date().getFullYear(),
+              mintDate: new Date().toISOString().split('T')[0], // Use current date as fallback
+              image: imageUrl || '',
+              imageBlobId,
+              qrCode: bottle.qrCode || '',
+              rarity,
+              tokenId: bottle.objectId || '',
+              attributes: {
+                vineyard: bottle.winery || 'Unknown Winery',
+                grapes: bottle.wineType || 'Unknown',
+                bottles: `${bottleNum}/${totalSupply}`,
+              },
+            };
+          });
+          
+          setNftBottles(transformedBottles);
+        } else {
+          // No data returned - show empty state
+          setNftBottles([]);
+          if (result.error) {
+            setError(result.error);
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching bottles:', err);
+        setError('Failed to load collection');
+      } finally {
+        setLoading(false);
       }
-    },
-    {
-      id: '3',
-      name: '2021 Amphora Orange',
-      village: 'porto',
-      vintage: 2021,
-      mintDate: '2024-09-10',
-      image: 'https://images.unsplash.com/photo-1584916201218-f4242ceb4809?w=400',
-      qrCode: 'https://sui.io/nft/0x789...',
-      rarity: 'Legendary',
-      tokenId: '0x3c4d5e6f7a8b',
-      attributes: {
-        vineyard: 'Casa Ferreirinha',
-        grapes: 'Viosinho',
-        bottles: '50/100',
-      }
-    },
-    {
-      id: '4',
-      name: '2023 Pet-Nat Rosé',
-      village: 'paris',
-      vintage: 2023,
-      mintDate: '2024-11-01',
-      image: 'https://images.unsplash.com/photo-1547595628-c61a29f496f0?w=400',
-      qrCode: 'https://sui.io/nft/0xabc...',
-      rarity: 'Rare',
-      tokenId: '0x4d5e6f7a8b9c',
-      attributes: {
-        vineyard: 'Domaine Naturel',
-        grapes: 'Gamay',
-        bottles: '300/800',
-      }
-    },
-  ];
+    };
+
+    fetchBottles();
+  }, [account]);
 
   const stats = {
     total: nftBottles.length,
@@ -145,7 +181,28 @@ export function Collection({ village }: CollectionProps) {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Collection Tabs */}
+      <LoadingState
+        loading={loading}
+        error={error}
+        onRetry={() => {
+          if (account) {
+            setError(null);
+            setLoading(true);
+            bottleApi.getOwnedBottlesByAddress(account.address).then((result) => {
+              if (result.success && result.data) {
+                // TODO: Transform actual data
+                setNftBottles([]);
+              } else {
+                setError(result.error || 'Failed to load bottles');
+              }
+              setLoading(false);
+            });
+          }
+        }}
+        loadingText="Loading your collection..."
+        errorTitle="Failed to load collection"
+      >
+        {/* Collection Tabs */}
       <div className="sticky top-[72px] z-20 bg-white border-b border-gray-200">
         <div className="flex items-center max-w-2xl mx-auto">
           <button
@@ -288,11 +345,20 @@ export function Collection({ village }: CollectionProps) {
                   <div className="flex gap-4 p-4">
                     {/* Bottle Image */}
                     <div className="relative w-24 h-32 flex-shrink-0 rounded-xl overflow-hidden bg-gray-100">
-                      <img 
-                        src={bottle.image} 
-                        alt={bottle.name}
-                        className="w-full h-full object-cover"
-                      />
+                      {bottle.imageBlobId ? (
+                        <WalrusImage
+                          blobId={bottle.imageBlobId}
+                          alt={bottle.name}
+                          className="w-full h-full object-cover"
+                          type="post"
+                        />
+                      ) : (
+                        <img 
+                          src={bottle.image || 'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=400'} 
+                          alt={bottle.name}
+                          className="w-full h-full object-cover"
+                        />
+                      )}
                       <div className="absolute top-2 left-2 w-6 h-6 bg-white/90 backdrop-blur rounded-full flex items-center justify-center text-sm">
                         {rarityStyle.icon}
                       </div>
@@ -367,11 +433,20 @@ export function Collection({ village }: CollectionProps) {
                 <div key={bottle.id} className="bg-white rounded-2xl shadow-sm overflow-hidden hover:shadow-md transition-all">
                   {/* Bottle Image */}
                   <div className="relative aspect-[3/4] bg-gray-100">
-                    <img 
-                      src={bottle.image} 
-                      alt={bottle.name}
-                      className="w-full h-full object-cover"
-                    />
+                    {bottle.imageBlobId ? (
+                      <WalrusImage
+                        blobId={bottle.imageBlobId}
+                        alt={bottle.name}
+                        className="w-full h-full object-cover"
+                        type="post"
+                      />
+                    ) : (
+                      <img 
+                        src={bottle.image || 'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=400'} 
+                        alt={bottle.name}
+                        className="w-full h-full object-cover"
+                      />
+                    )}
                     <div className="absolute top-2 left-2 w-7 h-7 bg-white/90 backdrop-blur rounded-full flex items-center justify-center text-sm">
                       {rarityStyle.icon}
                     </div>
@@ -432,11 +507,20 @@ export function Collection({ village }: CollectionProps) {
           <div className="bg-white rounded-3xl max-w-md w-full max-h-[90vh] overflow-y-auto">
             {/* Header Image */}
             <div className="relative h-80 bg-gray-100">
-              <img 
-                src={selectedBottle.image} 
-                alt={selectedBottle.name}
-                className="w-full h-full object-cover"
-              />
+              {selectedBottle.imageBlobId ? (
+                <WalrusImage
+                  blobId={selectedBottle.imageBlobId}
+                  alt={selectedBottle.name}
+                  className="w-full h-full object-cover"
+                  type="post"
+                />
+              ) : (
+                <img 
+                  src={selectedBottle.image || 'https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=400'} 
+                  alt={selectedBottle.name}
+                  className="w-full h-full object-cover"
+                />
+              )}
               <button
                 onClick={() => setSelectedBottle(null)}
                 className="absolute top-4 right-4 w-10 h-10 bg-white/90 backdrop-blur rounded-full flex items-center justify-center hover:bg-white transition-colors"
@@ -526,6 +610,7 @@ export function Collection({ village }: CollectionProps) {
           </div>
         </div>
       )}
+      </LoadingState>
     </div>
   );
 }

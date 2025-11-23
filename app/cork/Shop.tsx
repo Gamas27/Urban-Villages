@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Sparkles, Package, ShoppingCart, Clock, Check, X, Search, Filter, Heart, Truck, MapPin, Calendar } from 'lucide-react';
 import { getWinesByVillage, type Wine } from './data/mockData';
 import { Button } from '@/components/ui/button';
@@ -42,13 +42,35 @@ export function Shop({ village }: ShopProps) {
   const [showFilters, setShowFilters] = useState(false);
   const villageData = getVillageById(village);
 
-  // Mock cart data
-  const [cartItems] = useState<CartItem[]>([
-    {
-      wine: wines[0],
-      quantity: 2,
+  // Cart with localStorage persistence
+  const [cartItems, setCartItems] = useState<CartItem[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('cork_cart');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          // Filter out wines that no longer exist
+          return parsed.filter((item: CartItem) => 
+            wines.some(w => w.id === item.wine.id)
+          );
+        }
+      } catch (err) {
+        console.error('Failed to load cart from localStorage:', err);
+      }
     }
-  ]);
+    return [];
+  });
+
+  // Save cart to localStorage whenever it changes
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('cork_cart', JSON.stringify(cartItems));
+      } catch (err) {
+        console.error('Failed to save cart to localStorage:', err);
+      }
+    }
+  }, [cartItems]);
 
   // Mock order history
   const [orders] = useState<Order[]>([

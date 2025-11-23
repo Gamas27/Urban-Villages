@@ -52,7 +52,6 @@ export async function POST(req: NextRequest) {
       digest: sponsoredTx.digest,
     });
   } catch (error) {
-    console.error('Error sponsoring transaction:', error);
     return NextResponse.json(
       { 
         error: 'Failed to sponsor transaction',

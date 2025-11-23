@@ -36,6 +36,11 @@ export async function createWalrusService(
   const clientConfig: any = {
     network: config.network,
     suiRpcUrl: rpcUrl,
+    // Use upload relay for browser-based operations (as recommended by Walrus docs)
+    // This helps with resource consumption and ensures successful uploads
+    uploadRelayUrl: network === 'testnet'
+      ? 'https://upload-relay.testnet.walrus.space'
+      : 'https://upload-relay.mainnet.walrus.space',
   };
   
   const client = new WalrusClient(clientConfig);

@@ -53,7 +53,6 @@ export async function sponsorTransaction(
   }
 
   // Send to backend API to sponsor
-  console.log('📤 Sending transaction to sponsor API...', { sender, network });
   const response = await fetch('/api/sponsor-transaction', {
     method: 'POST',
     headers: {
@@ -68,12 +67,10 @@ export async function sponsorTransaction(
 
   if (!response.ok) {
     const error = await response.json();
-    console.error('❌ Sponsor API error:', error);
     throw new Error(error.error || `Failed to sponsor transaction: ${response.status} ${response.statusText}`);
   }
 
   const result = await response.json();
-  console.log('✅ Transaction sponsored by API:', { digest: result.digest });
   return result;
 }
 

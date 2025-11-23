@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Users, Send, Gift, ArrowRightLeft, Search, UserPlus, Check, Clock, X, Sparkles, Package, ExternalLink, Award, TrendingUp, Heart } from 'lucide-react';
-import { MOCK_USER } from './data/mockData';
 import { getVillageById } from './data/villages';
 import { Button } from '@/components/ui/button';
+import { useUserNamespace } from '@/lib/stores/userStore';
+import { useCurrentAccount, useSuiClientQuery } from '@mysten/dapp-kit';
 
 interface FriendsProps {
   village: string;
@@ -40,6 +41,8 @@ interface Transaction {
 }
 
 export function Friends({ village }: FriendsProps) {
+  const account = useCurrentAccount();
+  const namespace = useUserNamespace();
   const [activeTab, setActiveTab] = useState<FriendsTab>('friends');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFriend, setSelectedFriend] = useState<Friend | null>(null);
@@ -47,6 +50,26 @@ export function Friends({ village }: FriendsProps) {
   const [sendType, setSendType] = useState<'tokens' | 'bottle'>('tokens');
   const [sendAmount, setSendAmount] = useState('');
   const [sendMessage, setSendMessage] = useState('');
+
+  // Fetch real CORK balance
+  const { data: corkBalanceData } = useSuiClientQuery(
+    'getBalance',
+    {
+      coinType: process.env.NEXT_PUBLIC_CORK_TOKEN_PACKAGE_ID 
+        ? `${process.env.NEXT_PUBLIC_CORK_TOKEN_PACKAGE_ID}::cork_token::CORK`
+        : '0x2::sui::SUI',
+      owner: account?.address || '',
+    },
+    {
+      enabled: !!account && !!process.env.NEXT_PUBLIC_CORK_TOKEN_PACKAGE_ID,
+      refetchInterval: 10000,
+    }
+  );
+
+  const corkBalance = useMemo(() => {
+    if (!corkBalanceData || !process.env.NEXT_PUBLIC_CORK_TOKEN_PACKAGE_ID) return 0;
+    return Number(corkBalanceData.totalBalance || 0) / 1_000_000; // 6 decimals
+  }, [corkBalanceData]);
 
   // Mock friends data
   const friends: Friend[] = [
@@ -96,12 +119,12 @@ export function Friends({ village }: FriendsProps) {
     },
   ];
 
-  // Mock transaction data
+  // Mock transaction data (using real namespace)
   const transactions: Transaction[] = [
     {
       id: '1',
       type: 'sent-tokens',
-      from: MOCK_USER.namespace,
+      from: namespace || 'user',
       to: 'maria.lisbon',
       amount: 50,
       timestamp: '2024-11-20T14:30:00',
@@ -112,7 +135,7 @@ export function Friends({ village }: FriendsProps) {
       id: '2',
       type: 'received-bottle',
       from: 'joao.porto',
-      to: MOCK_USER.namespace,
+      to: namespace || 'user',
       bottle: {
         name: '2021 Amphora Orange',
         image: 'https://images.unsplash.com/photo-1584916201218-f4242ceb4809?w=200',
@@ -125,7 +148,7 @@ export function Friends({ village }: FriendsProps) {
       id: '3',
       type: 'received-tokens',
       from: 'sophie.paris',
-      to: MOCK_USER.namespace,
+      to: namespace || 'user',
       amount: 100,
       timestamp: '2024-11-18T16:45:00',
       status: 'completed',
@@ -133,7 +156,7 @@ export function Friends({ village }: FriendsProps) {
     {
       id: '4',
       type: 'sent-bottle',
-      from: MOCK_USER.namespace,
+      from: namespace || 'user',
       to: 'carlos.lisbon',
       bottle: {
         name: '2023 Orange Skin Contact',
@@ -146,7 +169,7 @@ export function Friends({ village }: FriendsProps) {
     {
       id: '5',
       type: 'sent-tokens',
-      from: MOCK_USER.namespace,
+      from: namespace || 'user',
       to: 'maria.lisbon',
       amount: 25,
       timestamp: '2024-11-16T12:00:00',
@@ -416,7 +439,7 @@ export function Friends({ village }: FriendsProps) {
         {activeTab === 'transactions' && (
           <div className="space-y-3">
             {transactions.map((transaction) => {
-              const isOutgoing = transaction.from === MOCK_USER.namespace;
+              const isOutgoing = transaction.from === (namespace || 'user');
               
               return (
                 <div key={transaction.id} className="bg-white rounded-2xl p-4 shadow-sm">
@@ -563,7 +586,7 @@ export function Friends({ village }: FriendsProps) {
                 <h3 className="font-semibold text-green-900">Your CORK Balance</h3>
                 <Sparkles className="w-5 h-5 text-green-600" />
               </div>
-              <p className="text-3xl text-green-900 mb-1">{MOCK_USER.corkBalance}</p>
+              <p className="text-3xl text-green-900 mb-1">{corkBalance.toFixed(2)}</p>
               <p className="text-xs text-green-600">Available to send</p>
             </div>
 
@@ -680,7 +703,7 @@ export function Friends({ village }: FriendsProps) {
                       />
                     </div>
                     <p className="text-xs text-gray-500 mt-2">
-                      Available: {MOCK_USER.corkBalance} CORK
+                      Available: {corkBalance.toFixed(2)} CORK
                     </p>
                   </div>
 

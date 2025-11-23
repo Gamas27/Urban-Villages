@@ -9,16 +9,20 @@ import { Collection } from './Collection';
 import { Friends } from './Friends';
 import { PostComposer } from './PostComposer';
 import { VillageSwitch } from './VillageSwitch';
-import { MOCK_USER } from './data/mockData';
 import { getVillageById } from './data/villages';
+import { useUserProfile, useUserNamespace, useUserVillage } from '@/lib/stores/userStore';
 
 type Tab = 'feed' | 'shop' | 'friends' | 'collection' | 'post' | 'profile';
 
 export function MainApp() {
+  const profile = useUserProfile();
+  const namespace = useUserNamespace();
+  const userVillage = useUserVillage();
+  
   const [activeTab, setActiveTab] = useState<Tab>('feed');
   const [showVillageSwitch, setShowVillageSwitch] = useState(false);
   const [showPostComposer, setShowPostComposer] = useState(false);
-  const [currentVillage, setCurrentVillage] = useState(MOCK_USER.village);
+  const [currentVillage, setCurrentVillage] = useState(userVillage || 'lisbon');
 
   const village = getVillageById(currentVillage);
 
@@ -70,7 +74,7 @@ export function MainApp() {
             </div>
             <div>
               <h1 className="text-xl">Urban Villages</h1>
-              <p className="text-xs opacity-90">@{MOCK_USER.namespace}</p>
+              <p className="text-xs opacity-90">@{namespace || 'user'}</p>
             </div>
           </div>
           

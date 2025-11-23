@@ -64,11 +64,7 @@ export function Onboarding({ onComplete }: OnboardingProps) {
       profilePicBlobId: profilePicBlobId || undefined,
     };
     
-    // Store in sessionStorage for access across components
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem('cork_onboarding_data', JSON.stringify(onboardingData));
-    }
-    
+    // Note: Profile will be stored in Zustand store (which also persists to sessionStorage)
     onComplete(onboardingData);
   };
 

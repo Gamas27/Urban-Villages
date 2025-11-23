@@ -1,9 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useCurrentAccount, useSuiClient } from '@mysten/dapp-kit';
+import { useCurrentAccount, useSuiClient, useSignAndExecuteTransaction } from '@mysten/dapp-kit';
 import { createWalrusService, getWalrusUrl } from '../walrus';
-import { useSponsoredTransaction } from './useSponsoredTransaction';
 
 export interface UploadResult {
   blobId: string;
@@ -29,7 +28,7 @@ export interface UploadResult {
 export function useEnokiWalrusUpload() {
   const currentAccount = useCurrentAccount();
   const suiClient = useSuiClient();
-  const { executeSponsoredTransaction, sponsoring, error: sponsorError } = useSponsoredTransaction();
+  const { mutate: signAndExecute } = useSignAndExecuteTransaction();
   
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -38,7 +37,7 @@ export function useEnokiWalrusUpload() {
   const [walrus, setWalrus] = useState<any>(null);
   
   useEffect(() => {
-    if (typeof window !== 'undefined' && suiClient) {
+    if (typeof window !== 'undefined') {
       createWalrusService({ network: 'testnet', epochs: 10 }, suiClient)
         .then(setWalrus)
         .catch((err) => {
@@ -51,22 +50,17 @@ export function useEnokiWalrusUpload() {
   /**
    * Upload a file to Walrus using current wallet (Enoki or regular)
    * Returns: { blobId, url, metadataId }
+   * 
+   * Follows the template pattern using uploadWithFlow and relay
    */
   const uploadFile = async (file: File): Promise<UploadResult | null> => {
     if (!currentAccount) {
-      setError('Please connect a wallet first');
+      setError('Please connect your wallet first');
       return null;
     }
 
     if (!walrus) {
-      setError('Walrus service not available. Please wait for initialization.');
-      return null;
-    }
-
-    // Check if the method exists
-    if (typeof walrus.writeFilesFlow !== 'function') {
-      console.error('Walrus client methods:', Object.keys(walrus));
-      setError('Walrus writeFilesFlow method not available. Client may not be initialized correctly.');
+      setError('Walrus service not available');
       return null;
     }
 
@@ -77,94 +71,89 @@ export function useEnokiWalrusUpload() {
       // Read file as array buffer
       const contents = await file.arrayBuffer();
 
-      // Import WalrusFile dynamically
-      const { WalrusFile } = await import('@mysten/walrus');
-
-      // Create upload flow using the correct API
-      const flow = walrus.writeFilesFlow({
-        files: [
-          WalrusFile.from({
+      // Create upload flow - using template pattern with uploadWithFlow
+      const flow = walrus.uploadWithFlow(
+        [
+          {
             contents: new Uint8Array(contents),
             identifier: file.name,
             tags: { 'content-type': file.type || 'application/octet-stream' },
-          }),
+          },
         ],
-      });
+        { epochs: 10, deletable: true }
+      );
 
-      // Step 1: Encode (stores result internally)
-      // Add retry logic for network issues
-      let encodeAttempts = 0;
-      const maxEncodeAttempts = 3;
-      while (encodeAttempts < maxEncodeAttempts) {
-        try {
-          await flow.encode();
-          break;
-        } catch (err) {
-          encodeAttempts++;
-          if (encodeAttempts >= maxEncodeAttempts) {
-            throw new Error(`Failed to encode after ${maxEncodeAttempts} attempts: ${err instanceof Error ? err.message : 'Unknown error'}`);
-          }
-          // Wait before retry (exponential backoff)
-          await new Promise(resolve => setTimeout(resolve, 1000 * encodeAttempts));
-        }
-      }
+      // Step 1: Encode
+      await flow.encode();
 
-      // Step 2: Register (returns transaction only)
+      // Step 2: Register (returns transaction)
       const registerTx = flow.register({
+        owner: currentAccount.address,
         epochs: 10,
         deletable: true,
-        owner: currentAccount.address,
       });
 
-      // Step 3: Sign and execute register transaction (sponsored)
+      // Step 3: Sign and execute register transaction - using template pattern with promise wrapper
       let registerDigest: string;
       let blobObjectId: string | null = null;
       
-      try {
-        const result = await executeSponsoredTransaction(
-          registerTx,
-          currentAccount.address,
-          'testnet'
-        );
-        registerDigest = result.digest;
+      await new Promise<void>((resolve, reject) => {
+        signAndExecute(
+          { transaction: registerTx },
+          {
+            onSuccess: async ({ digest }) => {
+              try {
+                registerDigest = digest;
+                const result = await suiClient.waitForTransaction({
+                  digest,
+                  options: { showEffects: true, showEvents: true },
+                });
 
-        // Extract blob object ID from BlobRegistered event
-        const txResult = await suiClient.getTransactionBlock({
-          digest: registerDigest,
-          options: { showEffects: true, showEvents: true },
-        });
-
-        if (txResult.events) {
-          const blobEvent = txResult.events.find((e) =>
-            e.type.includes('BlobRegistered')
-          );
-          if (blobEvent?.parsedJson) {
-            const data = blobEvent.parsedJson as any;
-            blobObjectId = data.object_id || data.objectId || null;
+                // Extract blob object ID from BlobRegistered event
+                if (result.events) {
+                  const blobEvent = result.events.find((e) =>
+                    e.type.includes('BlobRegistered')
+                  );
+                  if (blobEvent?.parsedJson) {
+                    const data = blobEvent.parsedJson as any;
+                    blobObjectId = data.object_id || data.objectId || null;
+                  }
+                }
+                resolve();
+              } catch (err) {
+                reject(err);
+              }
+            },
+            onError: reject,
           }
-        }
-      } catch (err) {
-        throw new Error(`Failed to register blob: ${err instanceof Error ? err.message : 'Unknown error'}`);
-      }
+        );
+      });
 
       // Step 4: Upload data to storage nodes
       await flow.upload({ digest: registerDigest! });
 
-      // Step 5: Certify (returns transaction only)
+      // Step 5: Certify (returns transaction)
       const certifyTx = flow.certify();
 
-      // Step 6: Sign and execute certify transaction (sponsored)
-      try {
-        await executeSponsoredTransaction(
-          certifyTx,
-          currentAccount.address,
-          'testnet'
+      // Step 6: Sign and execute certify transaction - using template pattern
+      await new Promise<void>((resolve, reject) => {
+        signAndExecute(
+          { transaction: certifyTx },
+          {
+            onSuccess: async ({ digest }) => {
+              try {
+                await suiClient.waitForTransaction({ digest });
+                resolve();
+              } catch (err) {
+                reject(err);
+              }
+            },
+            onError: reject,
+          }
         );
-      } catch (err) {
-        throw new Error(`Failed to certify blob: ${err instanceof Error ? err.message : 'Unknown error'}`);
-      }
+      });
 
-      // Step 7: Get blobId from listFiles
+      // Step 7: Get blobId
       const files = await flow.listFiles();
       const blobId = files[0]?.blobId;
 
@@ -191,14 +180,9 @@ export function useEnokiWalrusUpload() {
 
   return {
     uploadFile,
-    uploading: uploading || sponsoring,
-    error: error || sponsorError,
-    clearError: () => {
-      setError(null);
-      if (sponsorError) {
-        // Clear sponsor error if hook provides a method
-      }
-    },
+    uploading,
+    error,
+    clearError: () => { setError(null); },
   };
 }
 

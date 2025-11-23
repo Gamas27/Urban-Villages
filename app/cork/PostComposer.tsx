@@ -7,6 +7,8 @@ import { useCurrentAccount } from '@mysten/dapp-kit';
 import { getVillageById } from './data/villages';
 import { Button } from '@/components/ui/button';
 import { savePost } from './lib/postStorage';
+import { WalrusImage } from '@/components/WalrusImage';
+import { useUserProfile, useUserNamespace, useUserVillage } from '@/lib/stores/userStore';
 
 interface PostComposerProps {
   onClose: () => void;
@@ -16,32 +18,18 @@ interface PostComposerProps {
 export function PostComposer({ onClose, onPost }: PostComposerProps) {
   const account = useCurrentAccount();
   const { uploadFile, uploading: walrusUploading, error: walrusError } = useEnokiWalrusUpload();
+  const profile = useUserProfile();
+  const namespace = useUserNamespace();
+  const userVillage = useUserVillage();
   
   const [text, setText] = useState('');
   const [imageBlobId, setImageBlobId] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [posting, setPosting] = useState(false);
   
-  // Get onboarding data from sessionStorage (stored by Onboarding component)
-  const onboardingData = typeof window !== 'undefined' 
-    ? (() => {
-        try {
-          const stored = sessionStorage.getItem('cork_onboarding_data');
-          return stored ? JSON.parse(stored) : null;
-        } catch {
-          return null;
-        }
-      })()
-    : null;
-  
-  const username = onboardingData?.username || 'user';
-  const villageId = onboardingData?.village || 'lisbon';
-  const namespace = onboardingData?.username && onboardingData?.village 
-    ? `${onboardingData.username}.${onboardingData.village}` 
-    : 'user';
-  const profilePicUrl = onboardingData?.profilePicBlobId 
-    ? `https://aggregator.walrus-testnet.walrus.space/v1/${onboardingData.profilePicBlobId}`
-    : null;
+  const username = profile?.username || 'user';
+  const villageId = userVillage || 'lisbon';
+  const userNamespace = namespace || 'user';
 
   const village = getVillageById(villageId);
 
@@ -84,7 +72,7 @@ export function PostComposer({ onClose, onPost }: PostComposerProps) {
 
   const handlePost = async () => {
     if (!text.trim() && !imageBlobId) return;
-    if (!account || !username || !namespace || !villageId) {
+    if (!account || !profile || !namespace || !villageId) {
       console.error('User data incomplete for posting.');
       return;
     }
@@ -95,7 +83,7 @@ export function PostComposer({ onClose, onPost }: PostComposerProps) {
       // Save post with Walrus blobId
       const post = savePost({
         author: username,
-        namespace: namespace,
+        namespace: userNamespace,
         village: villageId,
         text: text.trim(),
         imageBlobId: imageBlobId || undefined,
@@ -155,11 +143,13 @@ export function PostComposer({ onClose, onPost }: PostComposerProps) {
         <div className="p-4">
           {/* User Info */}
           <div className="flex items-center gap-3 mb-4">
-            {profilePicUrl ? (
-              <img
-                src={profilePicUrl}
+            {profile?.profilePicBlobId ? (
+              <WalrusImage
+                blobId={profile.profilePicBlobId}
                 alt="Profile"
                 className="w-12 h-12 rounded-full object-cover"
+                type="profile"
+                initial={username[0]?.toUpperCase() || 'U'}
               />
             ) : (
               <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
@@ -167,7 +157,7 @@ export function PostComposer({ onClose, onPost }: PostComposerProps) {
               </div>
             )}
             <div>
-              <p className="font-semibold">@{namespace}</p>
+              <p className="font-semibold">@{userNamespace}</p>
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <span className="text-xl">{village?.emoji}</span>
                 <span>{village?.name}</span>

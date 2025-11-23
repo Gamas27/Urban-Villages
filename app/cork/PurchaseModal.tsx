@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { X, Sparkles, Package, ExternalLink, Loader2, CheckCircle } from 'lucide-react';
 import { type Wine } from './data/mockData';
 import { Button } from '@/components/ui/button';
+import { useCurrentAccount } from '@mysten/dapp-kit';
+import { bottleApi } from '@/lib/api';
 
 interface PurchaseModalProps {
   wine: Wine;
@@ -12,23 +14,54 @@ interface PurchaseModalProps {
 }
 
 export function PurchaseModal({ wine, onClose, onSuccess }: PurchaseModalProps) {
+  const account = useCurrentAccount();
   const [step, setStep] = useState<'confirm' | 'minting' | 'success'>('confirm');
   const [txHash, setTxHash] = useState<string | null>(null);
   const [nftId, setNftId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const handlePurchase = async () => {
+    if (!account) {
+      setError('Please connect your wallet first');
+      return;
+    }
+
     setStep('minting');
+    setError(null);
 
-    // Simulate transaction
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    try {
+      // Generate QR code (for demo, use timestamp-based)
+      const qrCode = `QR-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-    // Mock data
-    const mockTxHash = '0x' + Math.random().toString(16).substr(2, 64);
-    const mockNftId = '0x' + Math.random().toString(16).substr(2, 40);
+      // Use bottleApi client for consistent error handling
+      const { bottleApi } = await import('@/lib/api');
+      const result = await bottleApi.mintBottle({
+        recipient: account.address,
+        wineName: wine.name,
+        vintage: parseInt(wine.vintage) || new Date().getFullYear(),
+        region: wine.village || 'Unknown',
+        winery: wine.vineyard,
+        wineType: 'Wine',
+        bottleNumber: Math.floor(Math.random() * 1000) + 1,
+        totalSupply: wine.total || 500,
+        imageUrl: wine.imageUrl,
+        qrCode,
+        corkAmount: wine.corkReward || 50,
+        customText: wine.description || undefined,
+      });
 
-    setTxHash(mockTxHash);
-    setNftId(mockNftId);
-    setStep('success');
+      if (!result.success || !result.data) {
+        throw new Error(result.error || 'Failed to complete purchase');
+      }
+
+      setTxHash(result.data.digest);
+      setNftId(data.nftId);
+      setStep('success');
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to complete purchase';
+      setError(errorMsg);
+      setStep('confirm');
+    }
   };
 
   const handleClose = () => {
@@ -118,16 +151,26 @@ export function PurchaseModal({ wine, onClose, onSuccess }: PurchaseModalProps) 
                 </ul>
               </div>
 
+              {/* Error Message */}
+              {error && (
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4">
+                  <p className="text-sm text-red-800">{error}</p>
+                </div>
+              )}
+
               {/* Purchase Button */}
               <Button
                 onClick={handlePurchase}
-                className="w-full py-6 text-lg bg-gradient-to-r from-orange-500 to-purple-600 hover:from-orange-600 hover:to-purple-700"
+                disabled={!account}
+                className="w-full py-6 text-lg bg-gradient-to-r from-orange-500 to-purple-600 hover:from-orange-600 hover:to-purple-700 disabled:opacity-50"
               >
-                Confirm Purchase
+                {account ? 'Confirm Purchase' : 'Connect Wallet First'}
               </Button>
 
               <p className="text-xs text-center text-gray-500">
-                Transaction will be signed with your SUI wallet
+                {account 
+                  ? 'NFT and CORK tokens will be minted to your wallet'
+                  : 'Please connect your wallet to continue'}
               </p>
             </div>
           )}
@@ -152,17 +195,33 @@ export function PurchaseModal({ wine, onClose, onSuccess }: PurchaseModalProps) 
               <div className="space-y-2 text-sm text-left max-w-xs mx-auto">
                 <div className="flex items-center gap-2">
                   <Loader2 className="w-4 h-4 animate-spin text-purple-600" />
-                  <span>Signing transaction...</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin text-purple-600" />
-                  <span>Uploading provenance to Walrus...</span>
+                  <span>Minting CORK tokens...</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Loader2 className="w-4 h-4 animate-spin text-purple-600" />
                   <span>Minting NFT bottle...</span>
                 </div>
+                <div className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin text-purple-600" />
+                  <span>Finalizing transaction...</span>
+                </div>
               </div>
+              
+              {error && (
+                <div className="mt-4 bg-red-50 border border-red-200 rounded-xl p-4">
+                  <p className="text-sm text-red-800">{error}</p>
+                  <Button
+                    onClick={() => {
+                      setError(null);
+                      setStep('confirm');
+                    }}
+                    variant="outline"
+                    className="mt-2 w-full"
+                  >
+                    Try Again
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 
@@ -187,7 +246,9 @@ export function PurchaseModal({ wine, onClose, onSuccess }: PurchaseModalProps) 
                   className="w-32 h-48 object-cover rounded-lg mx-auto mb-4 shadow-lg"
                 />
                 <h4 className="text-xl mb-1">{wine.name}</h4>
-                <p className="text-sm text-gray-600 mb-3">Bottle #{Math.floor(Math.random() * 1000)}</p>
+                {nftId && (
+                  <p className="text-sm text-gray-600 mb-3">NFT: {nftId.slice(0, 8)}...{nftId.slice(-6)}</p>
+                )}
                 <div className="flex items-center justify-center gap-2 text-green-600">
                   <Sparkles className="w-5 h-5" />
                   <span className="font-semibold">+{wine.corkReward} CORK earned!</span>
@@ -247,3 +308,4 @@ export function PurchaseModal({ wine, onClose, onSuccess }: PurchaseModalProps) 
     </div>
   );
 }
+

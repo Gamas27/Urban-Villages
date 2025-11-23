@@ -1,19 +1,81 @@
 'use client';
 
 import { Sparkles, Package, Users, Calendar, ExternalLink } from 'lucide-react';
-import { MOCK_USER } from './data/mockData';
 import { getVillageById } from './data/villages';
 import { Button } from '@/components/ui/button';
+import { useUserProfile, useUserNamespace, useUserVillage } from '@/lib/stores/userStore';
+import { WalrusImage } from '@/components/WalrusImage';
+import { useCurrentAccount, useSuiClientQuery } from '@mysten/dapp-kit';
+import { useMemo } from 'react';
 
 export function Profile() {
-  const village = getVillageById(MOCK_USER.village);
+  const profile = useUserProfile();
+  const namespace = useUserNamespace();
+  const userVillage = useUserVillage();
+  const account = useCurrentAccount();
+  
+  const village = getVillageById(userVillage || 'lisbon');
+  
+  // Fetch CORK token balance using corkApi
+  const { data: corkBalanceData, isLoading: loadingBalance } = useSuiClientQuery(
+    'getBalance',
+    {
+      coinType: process.env.NEXT_PUBLIC_CORK_TOKEN_PACKAGE_ID 
+        ? `${process.env.NEXT_PUBLIC_CORK_TOKEN_PACKAGE_ID}::cork_token::CORK`
+        : '0x2::sui::SUI',
+      owner: account?.address || '',
+    },
+    {
+      enabled: !!account && !!process.env.NEXT_PUBLIC_CORK_TOKEN_PACKAGE_ID,
+      refetchInterval: 10000, // Refetch every 10 seconds
+    }
+  );
+  
+  // Convert balance from smallest unit to CORK (6 decimals)
+  const corkBalance = useMemo(() => {
+    if (!corkBalanceData || !process.env.NEXT_PUBLIC_CORK_TOKEN_PACKAGE_ID) return 0;
+    return Number(corkBalanceData.totalBalance || 0) / 1_000_000; // 6 decimals
+  }, [corkBalanceData]);
+  
+  // Fetch owned bottles count
+  const { data: ownedBottles } = useSuiClientQuery(
+    'getOwnedObjects',
+    {
+      owner: account?.address || '',
+      filter: {
+        StructType: process.env.NEXT_PUBLIC_BOTTLE_NFT_PACKAGE_ID 
+          ? `${process.env.NEXT_PUBLIC_BOTTLE_NFT_PACKAGE_ID}::bottle_nft::BottleNFT`
+          : '',
+      },
+      options: { showType: true },
+    },
+    {
+      enabled: !!account && !!process.env.NEXT_PUBLIC_BOTTLE_NFT_PACKAGE_ID,
+    }
+  );
+  
+  const bottlesOwned = ownedBottles?.data?.length || 0;
 
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString('en-US', {
+  if (!profile) {
+    return (
+      <div className="min-h-screen p-4 pb-24 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600">No profile found. Please complete onboarding.</p>
+        </div>
+      </div>
+    );
+  }
+  
+  const formatDate = (date: Date | string) => {
+    const d = typeof date === 'string' ? new Date(date) : date;
+    return d.toLocaleDateString('en-US', {
       month: 'short',
       year: 'numeric',
     });
   };
+  
+  // Use current date as joined date if not available
+  const joinedDate = new Date();
 
   return (
     <div className="min-h-screen p-4 pb-24">
@@ -25,11 +87,19 @@ export function Profile() {
         <div className="px-6 pb-6">
           {/* Profile Picture */}
           <div className="flex justify-between items-end -mt-16 mb-4">
-            <img
-              src={MOCK_USER.profilePicUrl}
-              alt="Profile"
-              className="w-24 h-24 rounded-full border-4 border-white shadow-lg object-cover"
-            />
+            {profile.profilePicBlobId ? (
+              <WalrusImage
+                blobId={profile.profilePicBlobId}
+                alt={profile.username}
+                className="w-24 h-24 rounded-full border-4 border-white shadow-lg object-cover"
+                type="profile"
+                initial={profile.username[0].toUpperCase()}
+              />
+            ) : (
+              <div className="w-24 h-24 rounded-full border-4 border-white shadow-lg bg-gradient-to-br from-purple-400 to-orange-400 flex items-center justify-center text-3xl font-bold text-white">
+                {profile.username[0].toUpperCase()}
+              </div>
+            )}
             <Button
               variant="outline"
               className="border-2"
@@ -39,21 +109,21 @@ export function Profile() {
           </div>
 
           {/* User Info */}
-          <h2 className="text-2xl mb-1">{MOCK_USER.username}</h2>
-          <p className="text-purple-600 mb-2">@{MOCK_USER.namespace}</p>
+          <h2 className="text-2xl mb-1">{profile.username}</h2>
+          <p className="text-purple-600 mb-2">@{namespace || 'user'}</p>
           <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
             <Calendar className="w-4 h-4" />
-            <span>Joined {formatDate(MOCK_USER.joinedAt)}</span>
+            <span>Joined {formatDate(joinedDate)}</span>
           </div>
 
-          {/* Follow Stats */}
+          {/* Follow Stats - Placeholder for future social features */}
           <div className="flex gap-6 mb-4">
             <div>
-              <span className="font-semibold text-lg">{MOCK_USER.following}</span>
+              <span className="font-semibold text-lg">0</span>
               <span className="text-gray-600 text-sm ml-1">Following</span>
             </div>
             <div>
-              <span className="font-semibold text-lg">{MOCK_USER.followers}</span>
+              <span className="font-semibold text-lg">0</span>
               <span className="text-gray-600 text-sm ml-1">Followers</span>
             </div>
           </div>
@@ -76,7 +146,7 @@ export function Profile() {
             <Sparkles className="w-5 h-5 text-green-600" />
             <span className="text-sm text-green-700">CORK Balance</span>
           </div>
-          <p className="text-3xl text-green-900">{MOCK_USER.corkBalance}</p>
+          <p className="text-3xl text-green-900">{corkBalance.toFixed(2)}</p>
           <p className="text-xs text-green-600 mt-1">Fungible Tokens</p>
         </div>
 
@@ -86,7 +156,7 @@ export function Profile() {
             <Package className="w-5 h-5 text-purple-600" />
             <span className="text-sm text-purple-700">NFT Bottles</span>
           </div>
-          <p className="text-3xl text-purple-900">{MOCK_USER.bottlesOwned}</p>
+          <p className="text-3xl text-purple-900">{bottlesOwned}</p>
           <p className="text-xs text-purple-600 mt-1">Unique Collectibles</p>
         </div>
       </div>
