@@ -163,27 +163,32 @@ export function PostComposer({ onClose, onPost }: PostComposerProps) {
   const isUploading = (imageUploading || postUploading) && posting; // Show upload state during posting
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end md:items-center justify-center">
-      <div className="bg-white w-full md:max-w-2xl md:rounded-2xl max-h-screen overflow-y-auto pb-safe">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end md:items-center justify-center p-4 animate-in fade-in duration-200">
+      <div className="bg-white w-full md:max-w-2xl md:rounded-3xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl animate-in slide-in-from-bottom-4 md:slide-in-from-bottom-0 md:zoom-in-95 duration-300">
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between">
+        <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between z-10">
           <button
             onClick={onClose}
             disabled={posting}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors disabled:opacity-50"
+            className="p-2 hover:bg-gray-100 rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-95"
+            aria-label="Close"
           >
-            <X className="w-6 h-6 text-gray-700" />
+            <X className="w-5 h-5 text-gray-600" />
           </button>
-          <h2 className="text-lg font-semibold text-gray-900">New Post</h2>
+          <h2 className="text-xl font-bold text-gray-900">Create Post</h2>
           <Button
             onClick={handlePost}
             disabled={!canPost}
-            className="bg-gradient-to-r from-orange-500 to-purple-600 hover:from-orange-600 hover:to-purple-700 disabled:opacity-50"
+            size="sm"
+            className="bg-gradient-to-r from-purple-600 to-orange-500 hover:from-purple-700 hover:to-orange-600 text-white font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed px-6"
           >
-              {posting ? (
+            {posting ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                {imageUploading ? 'Uploading image...' : postUploading ? 'Uploading post...' : 'Posting...'}
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span className="hidden sm:inline">
+                  {imageUploading ? 'Uploading image...' : postUploading ? 'Uploading post...' : 'Posting...'}
+                </span>
+                <span className="sm:hidden">Posting...</span>
               </>
             ) : (
               'Post'
@@ -192,103 +197,134 @@ export function PostComposer({ onClose, onPost }: PostComposerProps) {
         </div>
 
         {/* Content */}
-        <div className="p-4">
+        <div className="flex-1 overflow-y-auto px-6 py-5">
           {/* User Info */}
-          <div className="flex items-center gap-3 mb-4">
+          <div className="flex items-center gap-3 mb-6">
             {profile?.profilePicBlobId ? (
               <WalrusImage
                 blobId={profile.profilePicBlobId}
                 alt="Profile"
-                className="w-12 h-12 rounded-full object-cover"
+                className="w-14 h-14 rounded-full object-cover ring-2 ring-purple-100"
                 type="profile"
                 initial={username[0]?.toUpperCase() || 'U'}
               />
             ) : (
-              <div className="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
-                <span className="text-lg">{username[0]?.toUpperCase() || 'U'}</span>
+              <div className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-400 to-orange-400 flex items-center justify-center text-white font-semibold text-lg ring-2 ring-purple-100">
+                {username[0]?.toUpperCase() || 'U'}
               </div>
             )}
-            <div>
-              <p className="font-semibold">@{userNamespace}</p>
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <span className="text-xl">{village?.emoji}</span>
+            <div className="flex-1">
+              <p className="font-semibold text-gray-900 text-base">@{userNamespace}</p>
+              <div className="flex items-center gap-2 text-sm text-gray-500 mt-0.5">
+                <span className="text-lg">{village?.emoji}</span>
                 <span>{village?.name}</span>
               </div>
             </div>
           </div>
 
           {/* Text Input */}
-          <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="What's happening in your village?"
-            className="w-full min-h-[150px] p-4 border-2 border-gray-200 rounded-xl resize-none focus:border-purple-500 focus:outline-none text-lg text-gray-900 placeholder:text-gray-400 disabled:text-gray-500 disabled:bg-gray-50"
-            maxLength={280}
-            disabled={posting}
-          />
-
-          {/* Character Count */}
-          <div className="flex justify-between items-center mb-4">
-            <span className={`text-sm ${text.length > 250 ? 'text-orange-600' : 'text-gray-500'}`}>
-              {text.length}/280
-            </span>
-            {text.trim().length > 0 && (
-              <div className="flex items-center gap-1 text-sm text-green-600">
-                <Sparkles className="w-4 h-4" />
-                <span>+{estimatedCork} CORK estimated</span>
-              </div>
-            )}
+          <div className="relative mb-4">
+            <textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="What's happening in your village? Share your thoughts..."
+              className="w-full min-h-[180px] p-5 border-2 border-gray-200 rounded-2xl resize-none focus:border-purple-500 focus:ring-4 focus:ring-purple-100 focus:outline-none text-base text-gray-900 placeholder:text-gray-400 disabled:text-gray-500 disabled:bg-gray-50 transition-all"
+              maxLength={280}
+              disabled={posting}
+            />
+            {/* Character Count - positioned absolutely */}
+            <div className="absolute bottom-3 right-3">
+              <span className={`text-xs font-medium px-2 py-1 rounded-full bg-white/80 backdrop-blur-sm ${
+                text.length > 250 ? 'text-orange-600' : text.length > 200 ? 'text-yellow-600' : 'text-gray-400'
+              }`}>
+                {text.length}/280
+              </span>
+            </div>
           </div>
 
-          {/* Image Preview */}
-          {previewUrl && (
-            <div className="relative mb-4 rounded-xl overflow-hidden">
-              <img
-                src={previewUrl}
-                alt="Upload preview"
-                className="w-full rounded-xl"
-              />
-              {isUploading && (
-                <div className="absolute inset-0 bg-black bg-opacity-50 flex flex-col items-center justify-center">
-                  <Loader2 className="w-8 h-8 text-white animate-spin mb-2" />
-                  <p className="text-white text-sm">Uploading to Walrus...</p>
-                </div>
-              )}
-              {imageBlobId && !isUploading && (
-                <div className="absolute top-3 left-3 bg-green-500 text-white px-3 py-1 rounded-full text-sm flex items-center gap-1">
-                  ✓ Ready to post
-                </div>
-              )}
-              {!posting && (
-                <button
-                  onClick={handleRemoveImage}
-                  className="absolute top-3 right-3 bg-black bg-opacity-50 text-white p-2 rounded-full hover:bg-opacity-70 transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              )}
+          {/* CORK Estimate */}
+          {text.trim().length > 0 && (
+            <div className="flex items-center gap-2 mb-4 px-4 py-2.5 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100">
+              <Sparkles className="w-5 h-5 text-green-600" />
+              <span className="text-sm font-medium text-green-700">
+                Earn <span className="font-bold">+{estimatedCork + (hasImage ? 5 : 0)} CORK</span> for this post
+              </span>
             </div>
           )}
 
+          {/* Image Preview */}
+          {previewUrl && (
+            <div className="relative mb-4 rounded-2xl overflow-hidden border-2 border-gray-200 group">
+              <div className="relative aspect-video bg-gray-100">
+                <img
+                  src={previewUrl}
+                  alt="Upload preview"
+                  className="w-full h-full object-cover"
+                />
+                {isUploading && (
+                  <div className="absolute inset-0 bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center z-10">
+                    <Loader2 className="w-10 h-10 text-white animate-spin mb-3" />
+                    <p className="text-white font-medium text-sm">
+                      {imageUploading ? 'Uploading image to Walrus...' : 'Processing...'}
+                    </p>
+                    <p className="text-white/80 text-xs mt-1">This may take a moment</p>
+                  </div>
+                )}
+                {imageBlobId && !isUploading && (
+                  <div className="absolute top-4 left-4 bg-green-500 text-white px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2 shadow-lg z-10">
+                    <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+                    Ready to post
+                  </div>
+                )}
+                {!posting && (
+                  <button
+                    onClick={handleRemoveImage}
+                    className="absolute top-4 right-4 bg-black/60 hover:bg-black/80 text-white p-2.5 rounded-full transition-all backdrop-blur-sm z-10 active:scale-95"
+                    aria-label="Remove image"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                )}
+                {/* Gradient overlay on hover */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+              </div>
+            </div>
+          )}
+
+          {/* Error Messages */}
           {(walrusError || postError) && (
-            <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm">
-              Upload failed: {walrusError || postError}
+            <div className="bg-red-50 border-2 border-red-200 text-red-700 p-4 rounded-xl mb-4">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center text-xs font-bold mt-0.5">
+                  !
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold mb-1">Upload failed</p>
+                  <p className="text-sm text-red-600">{walrusError || postError}</p>
+                </div>
+              </div>
             </div>
           )}
 
           {selectedImageFile && !account && (
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4 text-sm">
-              <p className="text-yellow-800 text-center">
-                <strong>⚠️ Connect wallet to post with image</strong>
-                <br />
-                <span className="text-xs">You can preview the image, but need a wallet to upload it.</span>
-              </p>
+            <div className="bg-amber-50 border-2 border-amber-200 rounded-xl p-4 mb-4">
+              <div className="flex items-start gap-3">
+                <div className="text-2xl">⚠️</div>
+                <div className="flex-1">
+                  <p className="font-semibold text-amber-900 mb-1">Wallet required for images</p>
+                  <p className="text-sm text-amber-700">
+                    You can preview the image, but need to connect a wallet to upload it to Walrus.
+                  </p>
+                </div>
+              </div>
             </div>
           )}
 
           {/* Actions */}
-          <div className="flex items-center gap-4 pt-4 border-t border-gray-200">
-            <label className={`flex items-center gap-2 text-purple-600 hover:bg-purple-50 px-4 py-2 rounded-lg cursor-pointer transition-colors ${posting ? 'opacity-50 cursor-not-allowed' : ''}`}>
+          <div className="flex items-center gap-3 pt-5 border-t border-gray-100">
+            <label className={`flex items-center gap-2.5 text-purple-600 hover:bg-purple-50 px-5 py-2.5 rounded-xl cursor-pointer transition-all font-medium text-sm active:scale-95 ${
+              posting || hasImage ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-md'
+            }`}>
               <input
                 type="file"
                 accept="image/*"
@@ -297,26 +333,43 @@ export function PostComposer({ onClose, onPost }: PostComposerProps) {
                 className="hidden"
               />
               <ImageIcon className="w-5 h-5" />
-              <span className="text-sm">Add Image</span>
+              <span>{hasImage ? 'Image added' : 'Add Image'}</span>
             </label>
 
             {hasImage && (
-              <div className="flex-1 text-sm text-gray-600 flex items-center gap-2">
+              <div className="flex-1 text-sm text-gray-600 flex items-center gap-2 px-4 py-2.5 bg-green-50 rounded-xl border border-green-100">
                 <Sparkles className="w-4 h-4 text-green-600" />
-                <span>+5 CORK bonus for image posts</span>
+                <span className="font-medium text-green-700">+5 CORK bonus for image</span>
               </div>
             )}
           </div>
 
-          {/* Info */}
-          <div className="mt-6 p-4 bg-blue-50 rounded-xl">
-            <p className="text-xs text-blue-900 mb-1">💡 Earn CORK by posting!</p>
-            <ul className="text-xs text-blue-700 space-y-1">
-              <li>• Regular posts: 10 CORK</li>
-              <li>• Posts with images: 15 CORK</li>
-              <li>• Long posts (100+ chars): 20 CORK</li>
-              <li>• Images stored on Walrus decentralized storage</li>
-            </ul>
+          {/* Info Card */}
+          <div className="mt-6 p-5 bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl border border-blue-100">
+            <div className="flex items-start gap-3">
+              <div className="text-2xl flex-shrink-0">💡</div>
+              <div className="flex-1">
+                <p className="text-sm font-semibold text-gray-900 mb-2">Earn CORK by posting!</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-gray-700">
+                  <div className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                    <span>Regular posts: <strong>10 CORK</strong></span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                    <span>With images: <strong>+5 CORK</strong></span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+                    <span>Long posts (100+): <strong>20 CORK</strong></span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                    <span>Stored on Walrus</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
