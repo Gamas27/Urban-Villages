@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useCurrentAccount, useSignAndExecuteTransaction, useSuiClient } from '@mysten/dapp-kit';
 import { createWalrusService, getWalrusUrl } from '../walrus';
+import { WalrusFile } from '@mysten/walrus';
 
 export interface UploadResult {
   blobId: string;
@@ -54,17 +55,16 @@ export function useWalrusUpload() {
       // Read file as array buffer
       const contents = await file.arrayBuffer();
 
-      // Create upload flow
-      const flow = walrus.uploadWithFlow(
-        [
-          {
+      // Create upload flow using writeFilesFlow
+      const flow = walrus.writeFilesFlow({
+        files: [
+          WalrusFile.from({
             contents: new Uint8Array(contents),
             identifier: file.name,
             tags: { 'content-type': file.type || 'application/octet-stream' },
-          },
+          }),
         ],
-        { epochs: 10, deletable: true }
-      );
+      });
 
       // Step 1: Encode
       await flow.encode();

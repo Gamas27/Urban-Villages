@@ -22,7 +22,7 @@ export async function createWalrusService(
     throw new Error('WalrusClient can only be used client-side');
   }
   
-  const { WalrusClient } = await import('@mysten/walrus');
+  const { WalrusClient, WalrusFile } = await import('@mysten/walrus');
   
   const network = config.network === 'mainnet' ? 'mainnet' : 'testnet';
   
@@ -46,6 +46,14 @@ export async function createWalrusService(
   const client = new WalrusClient(clientConfig);
   
   return client;
+}
+
+/**
+ * Export WalrusFile for use in hooks
+ */
+export async function getWalrusFile() {
+  const { WalrusFile } = await import('@mysten/walrus');
+  return WalrusFile;
 }
 
 /**
