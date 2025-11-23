@@ -1,10 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useCurrentAccount, useSuiClient, useSignAndExecuteTransaction } from '@mysten/dapp-kit';
-import { getWalrusUrl } from '../walrus';
+import { createWalrusService, getWalrusUrl } from '../walrus';
 import { WalrusFile } from '@mysten/walrus';
-import { useWalrusService } from './useWalrusService';
 
 export interface UploadResult {
   blobId: string;
@@ -32,222 +31,159 @@ export function useEnokiWalrusUpload() {
   const suiClient = useSuiClient();
   const { mutate: signAndExecute } = useSignAndExecuteTransaction();
   
-  // Use shared Walrus service (initialized once, reused everywhere)
-  const { walrus, isLoading: serviceLoading, error: serviceError, retry: retryService } = useWalrusService();
-  
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Create Walrus service (client-side only, async due to WASM)
+  // Match template exactly: no suiClient param, empty deps
+  const [walrus, setWalrus] = useState<any>(null);
+  
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      createWalrusService({ network: 'testnet', epochs: 10 })
+        .then(setWalrus)
+        .catch((err) => {
+          console.error('Failed to initialize Walrus:', err);
+          setError('Failed to initialize Walrus service');
+        });
+    }
+  }, []);
 
   /**
    * Upload a file to Walrus using current wallet (Enoki or regular)
    * Returns: { blobId, url, metadataId }
    * 
-   * Includes retry logic and timeout handling for reliability
+   * Matches template pattern exactly - simple and reliable
    */
-  const uploadFile = async (file: File, maxRetries = 3): Promise<UploadResult | null> => {
+  const uploadFile = async (file: File): Promise<UploadResult | null> => {
     if (!currentAccount) {
       setError('Please connect your wallet first');
       return null;
     }
 
-    if (serviceLoading) {
-      setError('Walrus service is initializing. Please wait...');
-      return null;
-    }
-
-    if (serviceError || !walrus) {
-      setError(serviceError || 'Walrus service not available. Click retry to initialize.');
+    if (!walrus) {
+      setError('Walrus service not available');
       return null;
     }
 
     setUploading(true);
     setError(null);
 
-    // Retry logic with exponential backoff
-    let lastError: Error | null = null;
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      try {
-        if (attempt > 0) {
-          // Exponential backoff: 1s, 2s, 4s
-          const delay = Math.pow(2, attempt - 1) * 1000;
-          console.log(`[Walrus] Retry attempt ${attempt + 1}/${maxRetries} after ${delay}ms`);
-          await new Promise(resolve => setTimeout(resolve, delay));
-        }
+    try {
+      // Read file as array buffer
+      const contents = await file.arrayBuffer();
 
-        const result = await performUpload(file);
-        setUploading(false);
-        return result;
-      } catch (err) {
-        lastError = err instanceof Error ? err : new Error('Unknown error');
-        console.warn(`[Walrus] Upload attempt ${attempt + 1} failed:`, lastError.message);
-        
-        // Don't retry on certain errors
-        if (lastError.message.includes('wallet') || lastError.message.includes('account')) {
-          break;
-        }
-      } finally {
-        if (attempt === maxRetries - 1) {
-          setUploading(false);
-        }
-      }
-    }
-
-    // All retries failed
-    const errorMsg = lastError?.message || 'Upload failed after multiple attempts';
-    setError(`Upload failed: ${errorMsg}`);
-    console.error('[Walrus] All upload attempts failed');
-    setUploading(false);
-    return null;
-  };
-
-  /**
-   * Perform the actual upload with timeout handling
-   */
-  const performUpload = async (file: File): Promise<UploadResult> => {
-    if (!currentAccount) {
-      throw new Error('Account is required for upload');
-    }
-
-    // Store account in const for TypeScript narrowing
-    const account = currentAccount;
-
-    // Timeout wrapper (30 seconds max)
-    const timeoutMs = 30000;
-    const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('Upload timeout - operation took too long')), timeoutMs);
-    });
-
-    const uploadPromise = async (): Promise<UploadResult> => {
-      try {
-        // Read file as array buffer
-        const contents = await file.arrayBuffer();
-
-        // Create upload flow - using template pattern with writeFilesFlow
-        const flow = walrus.writeFilesFlow({
-          files: [
-            WalrusFile.from({
-              contents: new Uint8Array(contents),
-              identifier: file.name,
-              tags: { 'content-type': file.type || 'application/octet-stream' },
-            }),
-          ],
-        });
-
-        // Step 1: Encode (with timeout)
-        await Promise.race([
-          flow.encode(),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Encode timeout')), 10000))
-        ]);
-
-        // Step 2: Register (returns transaction)
-        const registerTx = flow.register({
-          owner: account.address,
-          epochs: 10,
-          deletable: true,
-        });
-
-        // Step 3: Sign and execute register transaction - using template pattern with promise wrapper
-        let registerDigest: string;
-        let blobObjectId: string | null = null;
-        
-        await Promise.race([
-          new Promise<void>((resolve, reject) => {
-            signAndExecute(
-              { transaction: registerTx },
-              {
-                onSuccess: async ({ digest }) => {
-                  try {
-                    registerDigest = digest;
-                    const result = await suiClient.waitForTransaction({
-                      digest,
-                      options: { showEffects: true, showEvents: true },
-                    });
-
-                    // Extract blob object ID from BlobRegistered event
-                    if (result.events) {
-                      const blobEvent = result.events.find((e) =>
-                        e.type.includes('BlobRegistered')
-                      );
-                      if (blobEvent?.parsedJson) {
-                        const data = blobEvent.parsedJson as any;
-                        blobObjectId = data.object_id || data.objectId || null;
-                      }
-                    }
-                    resolve();
-                  } catch (err) {
-                    reject(err);
-                  }
-                },
-                onError: reject,
-              }
-            );
+      // Create upload flow - using template pattern with writeFilesFlow
+      const flow = walrus.writeFilesFlow({
+        files: [
+          WalrusFile.from({
+            contents: new Uint8Array(contents),
+            identifier: file.name,
+            tags: { 'content-type': file.type || 'application/octet-stream' },
           }),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Register transaction timeout')), 15000))
-        ]);
+        ],
+      });
 
-        // Step 4: Upload data to storage nodes (with timeout)
-        await Promise.race([
-          flow.upload({ digest: registerDigest! }),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Storage upload timeout')), 20000))
-        ]);
+      // Step 1: Encode
+      await flow.encode();
 
-        // Step 5: Certify (returns transaction)
-        const certifyTx = flow.certify();
+      // Step 2: Register (returns transaction)
+      const registerTx = flow.register({
+        owner: currentAccount.address,
+        epochs: 10,
+        deletable: true,
+      });
 
-        // Step 6: Sign and execute certify transaction - using template pattern
-        await Promise.race([
-          new Promise<void>((resolve, reject) => {
-            signAndExecute(
-              { transaction: certifyTx },
-              {
-                onSuccess: async ({ digest }) => {
-                  try {
-                    await suiClient.waitForTransaction({ digest });
-                    resolve();
-                  } catch (err) {
-                    reject(err);
+      // Step 3: Sign and execute register transaction - using template pattern with promise wrapper
+      let registerDigest: string;
+      let blobObjectId: string | null = null;
+      
+      await new Promise<void>((resolve, reject) => {
+        signAndExecute(
+          { transaction: registerTx },
+          {
+            onSuccess: async ({ digest }) => {
+              try {
+                registerDigest = digest;
+                const result = await suiClient.waitForTransaction({
+                  digest,
+                  options: { showEffects: true, showEvents: true },
+                });
+
+                // Extract blob object ID from BlobRegistered event
+                if (result.events) {
+                  const blobEvent = result.events.find((e) =>
+                    e.type.includes('BlobRegistered')
+                  );
+                  if (blobEvent?.parsedJson) {
+                    const data = blobEvent.parsedJson as any;
+                    blobObjectId = data.object_id || data.objectId || null;
                   }
-                },
-                onError: reject,
+                }
+                resolve();
+              } catch (err) {
+                reject(err);
               }
-            );
-          }),
-          new Promise((_, reject) => setTimeout(() => reject(new Error('Certify transaction timeout')), 15000))
-        ]);
+            },
+            onError: reject,
+          }
+        );
+      });
 
-        // Step 7: Get blobId
-        const files = await flow.listFiles();
-        const blobId = files[0]?.blobId;
+      // Step 4: Upload data to storage nodes
+      await flow.upload({ digest: registerDigest! });
 
-        if (!blobId) {
-          throw new Error('Failed to get blobId after upload');
-        }
+      // Step 5: Certify (returns transaction)
+      const certifyTx = flow.certify();
 
-        const metadataId = blobObjectId || blobId;
+      // Step 6: Sign and execute certify transaction - using template pattern
+      await new Promise<void>((resolve, reject) => {
+        signAndExecute(
+          { transaction: certifyTx },
+          {
+            onSuccess: async ({ digest }) => {
+              try {
+                await suiClient.waitForTransaction({ digest });
+                resolve();
+              } catch (err) {
+                reject(err);
+              }
+            },
+            onError: reject,
+          }
+        );
+      });
 
-        return {
-          blobId,
-          url: getWalrusUrl(blobId),
-          metadataId,
-        };
-      } catch (err) {
-        throw err; // Re-throw for retry logic
+      // Step 7: Get blobId
+      const files = await flow.listFiles();
+      const blobId = files[0]?.blobId;
+
+      if (!blobId) {
+        throw new Error('Failed to get blobId after upload');
       }
-    };
 
-    // Race between upload and timeout
-    return await Promise.race([uploadPromise(), timeoutPromise]);
+      const metadataId = blobObjectId || blobId;
+
+      return {
+        blobId,
+        url: getWalrusUrl(blobId),
+        metadataId,
+      };
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+      setError(`Upload failed: ${errorMsg}`);
+      console.error('Walrus upload error:', err);
+      return null;
+    } finally {
+      setUploading(false);
+    }
   };
 
   return {
     uploadFile,
-    uploading: uploading || serviceLoading,
-    error: error || serviceError,
-    clearError: () => { 
-      setError(null);
-      if (serviceError) retryService();
-    },
-    retryService,
+    uploading,
+    error,
+    clearError: () => { setError(null); },
   };
 }
 
