@@ -107,8 +107,24 @@ export async function POST(req: NextRequest) {
         // The Bech32-encoded data contains: flag byte (0x00=Ed25519, 0x01=secp256k1) + private key bytes
         const bech32Data = adminPrivateKey.slice('suiprivkey'.length);
         const decoded = bech32.decode(bech32Data);
-        // Convert Bech32 words to bytes
-        const data = Buffer.from(bech32.fromWords(decoded.words));
+        
+        // Convert Bech32 words (5-bit) to bytes (8-bit)
+        // Bech32 uses 5-bit words, so we need to convert them back to bytes
+        const words = decoded.words;
+        const bytes: number[] = [];
+        let bits = 0;
+        let value = 0;
+        
+        for (const word of words) {
+          value = (value << 5) | word;
+          bits += 5;
+          while (bits >= 8) {
+            bytes.push((value >> (bits - 8)) & 0xff);
+            bits -= 8;
+          }
+        }
+        
+        const data = Buffer.from(bytes);
         
         // First byte is the flag: 0x00 = Ed25519, 0x01 = secp256k1
         const flag = data[0];
@@ -122,7 +138,7 @@ export async function POST(req: NextRequest) {
           // secp256k1
           keypair = Secp256k1Keypair.fromSecretKey(fromB64(secretKeyBase64));
         } else {
-          throw new Error(`Unknown key scheme flag: ${flag}`);
+          throw new Error(`Unknown key scheme flag: ${flag} (expected 0x00 for Ed25519 or 0x01 for secp256k1)`);
         }
         adminAddress = keypair.toSuiAddress();
       } else {
@@ -137,13 +153,26 @@ export async function POST(req: NextRequest) {
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      
+      // Log detailed error for debugging
+      console.error('[mint-purchase] Key parsing error:', {
+        isBech32,
+        keyPrefix: adminPrivateKey.substring(0, 20) + '...',
+        error: errorMessage,
+        stack: errorStack,
+      });
+      
       return NextResponse.json(
         { 
           error: 'Invalid admin private key format.',
           details: isBech32 
-            ? `Failed to parse Bech32 key: ${errorMessage}`
+            ? `Failed to parse Bech32 key: ${errorMessage}. Make sure the key starts with "suiprivkey" and was exported correctly.`
             : `Failed to parse base64 key: ${errorMessage}. Key must be base64-encoded Ed25519 or secp256k1 private key, or Bech32 format (suiprivkey...).`,
-          hint: 'Export with: sui keytool export --key-identity <alias>'
+          hint: isBech32 
+            ? 'Verify the key was exported correctly with: sui keytool export --key-identity <alias>'
+            : 'Export with: sui keytool export --key-identity <alias> (outputs Bech32 format)',
+          debug: process.env.NODE_ENV === 'development' ? errorStack : undefined,
         },
         { status: 500 }
       );
