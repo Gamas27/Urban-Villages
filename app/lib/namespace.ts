@@ -120,12 +120,8 @@ export async function registerNamespace(
     );
   }
 
-  // Set sender if provided (helps with transaction determination)
-  // Note: dapp-kit should automatically determine sender from connected wallet,
-  // but setting it explicitly can help with transaction building
-  if (sender && typeof (tx as any).setSender === 'function') {
-    (tx as any).setSender(sender);
-  }
+  // Note: dapp-kit should automatically determine sender from connected wallet
+  // We don't need to set sender explicitly when using useSignAndExecuteTransaction
 
   // Format namespace string: username.village
   const namespaceStr = formatNamespace(username, village);

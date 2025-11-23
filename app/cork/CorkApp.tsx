@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { Onboarding } from './Onboarding';
 import { MainApp } from './MainApp';
 import { useCurrentAccount } from '@mysten/dapp-kit';
-import { useSignAndExecuteTransaction } from '@mysten/dapp-kit';
+import { useSignAndExecuteTransaction, useSuiClient } from '@mysten/dapp-kit';
 import { Transaction } from '@mysten/sui/transactions';
 import { useUserStore, useUserProfile } from '@/lib/stores/userStore';
 import { useBackendStore } from '@/lib/stores/backendStore';
@@ -14,13 +14,30 @@ import { saveUserProfile, trackOnboardingEvent, logTransaction } from '@/lib/api
 
 export default function CorkApp() {
   const account = useCurrentAccount();
-  const { mutateAsync: signAndExecuteMutate } = useSignAndExecuteTransaction();
+  const { mutate: signAndExecuteMutate } = useSignAndExecuteTransaction();
+  const suiClient = useSuiClient();
   
-  // Wrapper function to match expected signature
+  // Wrapper function to match expected signature using mutate with callbacks
   const signAndExecute = async (params: { transaction: Transaction }): Promise<{ digest: string }> => {
-    // Type assertion to handle potential version mismatches between Transaction types
-    const result = await signAndExecuteMutate(params as any);
-    return { digest: result.digest };
+    return new Promise<{ digest: string }>((resolve, reject) => {
+      signAndExecuteMutate(
+        params as any,
+        {
+          onSuccess: async ({ digest }) => {
+            try {
+              // Wait for transaction confirmation
+              await suiClient.waitForTransaction({ digest });
+              resolve({ digest });
+            } catch (error) {
+              reject(error);
+            }
+          },
+          onError: (error) => {
+            reject(error);
+          },
+        }
+      );
+    });
   };
   const profile = useUserProfile();
   const { setProfile, updateProfile, setLoading, setError, loading, error: registrationError } = useUserStore();
