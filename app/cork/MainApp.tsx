@@ -170,15 +170,15 @@ export function MainApp() {
           </button>
 
           <button
-            onClick={() => setActiveTab('friends')}
+            onClick={() => setActiveTab('collection')}
             className={`flex flex-col items-center justify-center gap-1 p-3 min-w-[64px] transition-colors duration-200 ${
-              activeTab === 'friends'
+              activeTab === 'collection'
                 ? 'text-purple-600'
                 : 'text-gray-500'
             }`}
           >
-            <Users className={`w-6 h-6 transition-all duration-200 ${activeTab === 'friends' ? 'fill-purple-600' : ''}`} />
-            <span className={`text-[10px] ${activeTab === 'friends' ? 'font-semibold' : 'font-medium'}`}>Friends</span>
+            <Package className={`w-6 h-6 transition-all duration-200 ${activeTab === 'collection' ? 'fill-purple-600' : ''}`} />
+            <span className={`text-[10px] ${activeTab === 'collection' ? 'font-semibold' : 'font-medium'}`}>Collection</span>
           </button>
 
           <button

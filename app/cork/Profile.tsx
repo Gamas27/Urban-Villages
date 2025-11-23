@@ -280,6 +280,10 @@ export function Profile() {
           <Button
             variant="outline"
             className="w-full justify-between text-gray-900 hover:text-gray-900"
+            onClick={() => {
+              // Navigate to collection tab
+              window.dispatchEvent(new Event('navigateToCollection'));
+            }}
           >
             <span>View My NFT Bottles</span>
             <ExternalLink className="w-4 h-4" />
