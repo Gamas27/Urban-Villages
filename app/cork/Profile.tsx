@@ -317,25 +317,39 @@ export function Profile() {
                   console.log('[Profile] Starting app reset...');
                   
                   // Disconnect wallet first (this will clear Enoki/Google login)
-                  try {
-                    const connectedWallet = wallets.find(w => w.isConnected);
-                    if (connectedWallet) {
-                      // Try to disconnect - method may exist at runtime even if TypeScript doesn't recognize it
-                      const walletAny = connectedWallet as any;
-                      if (walletAny.disconnect && typeof walletAny.disconnect === 'function') {
-                        await walletAny.disconnect();
-                        console.log('[Profile] ✅ Wallet disconnected');
-                      }
-                    }
-                  } catch (error) {
-                    console.warn('[Profile] Error disconnecting wallet:', error);
-                  }
-                  
                   // Clear Enoki/Google login session data from localStorage
                   if (typeof window !== 'undefined') {
+                    try {
+                      // Try to disconnect if wallet is connected
+                      if (account) {
+                        // Find connected wallet by checking if it has the current account
+                        const connectedWallet = wallets.find((w: any) => {
+                          try {
+                            return w.accounts?.some((acc: any) => acc.address === account.address);
+                          } catch {
+                            return false;
+                          }
+                        });
+                        
+                        if (connectedWallet) {
+                          const walletAny = connectedWallet as any;
+                          if (walletAny.disconnect && typeof walletAny.disconnect === 'function') {
+                            await walletAny.disconnect();
+                            console.log('[Profile] ✅ Wallet disconnected');
+                          }
+                        }
+                      }
+                    } catch (error) {
+                      console.warn('[Profile] Error disconnecting wallet:', error);
+                    }
+                    
+                    // Clear Enoki/Google login session data from localStorage
                     // Clear Enoki-specific storage keys
                     Object.keys(localStorage).forEach(key => {
-                      if (key.includes('enoki') || key.includes('wallet') || key.includes('sui')) {
+                      if (key.toLowerCase().includes('enoki') || 
+                          key.toLowerCase().includes('wallet') || 
+                          key.toLowerCase().includes('sui') ||
+                          key.toLowerCase().includes('dapp-kit')) {
                         localStorage.removeItem(key);
                       }
                     });
