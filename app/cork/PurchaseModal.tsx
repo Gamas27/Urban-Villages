@@ -22,6 +22,7 @@ export function PurchaseModal({ wine, onClose, onSuccess }: PurchaseModalProps) 
   const [nftId, setNftId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [txId, setTxId] = useState<string | null>(null);
+  const [posting, setPosting] = useState(false);
 
   const handlePurchase = async () => {
     if (!account) {
@@ -31,6 +32,7 @@ export function PurchaseModal({ wine, onClose, onSuccess }: PurchaseModalProps) 
 
     setStep('minting');
     setError(null);
+    setPosting(true);
 
     try {
       // Track transaction in blockchain store (pending)
@@ -101,10 +103,18 @@ export function PurchaseModal({ wine, onClose, onSuccess }: PurchaseModalProps) 
           console.error('Failed to refresh blockchain state:', err);
         });
       }
+
+      // Trigger collection refresh event
+      window.dispatchEvent(new Event('purchaseComplete'));
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to complete purchase';
       setError(errorMsg);
       setStep('confirm');
+      
+      // Log error for debugging
+      console.error('[PurchaseModal] Purchase error:', err);
+    } finally {
+      setPosting(false);
     }
   };
 
@@ -205,10 +215,10 @@ export function PurchaseModal({ wine, onClose, onSuccess }: PurchaseModalProps) 
               {/* Purchase Button */}
               <Button
                 onClick={handlePurchase}
-                disabled={!account}
+                disabled={!account || posting}
                 className="w-full py-6 text-lg bg-gradient-to-r from-orange-500 to-purple-600 hover:from-orange-600 hover:to-purple-700 disabled:opacity-50"
               >
-                {account ? 'Confirm Purchase' : 'Connect Wallet First'}
+                {posting ? 'Processing...' : account ? 'Confirm Purchase' : 'Connect Wallet First'}
               </Button>
 
               <p className="text-xs text-center text-gray-500">
@@ -332,7 +342,11 @@ export function PurchaseModal({ wine, onClose, onSuccess }: PurchaseModalProps) 
               {/* Actions */}
               <div className="space-y-3">
                 <Button
-                  onClick={handleClose}
+                  onClick={() => {
+                    // Trigger navigation to collection tab
+                    window.dispatchEvent(new Event('navigateToCollection'));
+                    handleClose();
+                  }}
                   className="w-full py-4 bg-gradient-to-r from-orange-500 to-purple-600 hover:from-orange-600 hover:to-purple-700"
                 >
                   View My Bottles

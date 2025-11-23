@@ -562,6 +562,8 @@ export function Shop({ village }: ShopProps) {
           wine={selectedWine}
           onClose={() => setSelectedWine(null)}
           onSuccess={() => {
+            // Refresh wines list if needed
+            // The collection will auto-refresh via purchaseComplete event
             setSelectedWine(null);
             // TODO: Refresh wine list
           }}

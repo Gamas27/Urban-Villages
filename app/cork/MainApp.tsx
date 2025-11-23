@@ -63,6 +63,25 @@ export function MainApp() {
     window.dispatchEvent(new Event('postCreated'));
   };
 
+  // Listen for purchase completion to navigate to collection
+  useEffect(() => {
+    const handlePurchaseComplete = () => {
+      // Collection will auto-refresh via purchaseComplete event
+    };
+
+    const handleNavigateToCollection = () => {
+      setActiveTab('collection');
+    };
+
+    window.addEventListener('purchaseComplete', handlePurchaseComplete);
+    window.addEventListener('navigateToCollection', handleNavigateToCollection);
+    
+    return () => {
+      window.removeEventListener('purchaseComplete', handlePurchaseComplete);
+      window.removeEventListener('navigateToCollection', handleNavigateToCollection);
+    };
+  }, []);
+
   if (showPostComposer) {
     return (
       <PostComposer

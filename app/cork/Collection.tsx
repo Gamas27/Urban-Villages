@@ -47,19 +47,18 @@ export function Collection({ village }: CollectionProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Fetch owned bottles on mount
-  useEffect(() => {
-    const fetchBottles = async () => {
-      if (!account) {
-        setLoading(false);
-        return;
-      }
+  // Fetch owned bottles on mount and when account changes
+  const fetchBottles = async () => {
+    if (!account) {
+      setLoading(false);
+      return;
+    }
 
-      setLoading(true);
-      setError(null);
+    setLoading(true);
+    setError(null);
 
-      try {
-        const result = await bottleApi.getOwnedBottlesByAddress(account.address);
+    try {
+      const result = await bottleApi.getOwnedBottlesByAddress(account.address);
         
         if (result.success && result.data) {
           if (result.data.length === 0) {
@@ -139,6 +138,20 @@ export function Collection({ village }: CollectionProps) {
     };
 
     fetchBottles();
+
+    // Listen for purchase completion events to refresh collection
+    const handlePurchaseComplete = () => {
+      // Small delay to allow blockchain state to update
+      setTimeout(() => {
+        fetchBottles();
+      }, 2000);
+    };
+
+    window.addEventListener('purchaseComplete', handlePurchaseComplete);
+
+    return () => {
+      window.removeEventListener('purchaseComplete', handlePurchaseComplete);
+    };
   }, [account]);
 
   const stats = {
