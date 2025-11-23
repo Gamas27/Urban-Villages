@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Transaction } from '@mysten/sui/transactions';
 import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
+import { Secp256k1Keypair } from '@mysten/sui/keypairs/secp256k1';
 import { fromB64 } from '@mysten/sui/utils';
+import type { Keypair } from '@mysten/sui/cryptography';
 
 /**
  * API Route for Minting Bottle NFT and CORK Tokens on Purchase
@@ -11,7 +13,7 @@ import { fromB64 } from '@mysten/sui/utils';
  * AdminCap is owned by the deployer, so only the deployer can call mint functions.
  * 
  * Environment Variables Required:
- * - ADMIN_PRIVATE_KEY: Base64-encoded Ed25519 private key of the deployer
+ * - ADMIN_PRIVATE_KEY: Base64-encoded private key of the deployer (supports both Ed25519 and secp256k1)
  * - NEXT_PUBLIC_CORK_TOKEN_PACKAGE_ID: Cork Token package ID
  * - NEXT_PUBLIC_CORK_TREASURY_ID: Cork Token Treasury ID
  * - NEXT_PUBLIC_CORK_ADMIN_CAP_ID: Cork Token AdminCap ID
@@ -90,9 +92,30 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Load admin keypair
-    const keypair = Ed25519Keypair.fromSecretKey(fromB64(adminPrivateKey));
-    const adminAddress = keypair.toSuiAddress();
+    // Load admin keypair - support both Ed25519 and secp256k1
+    // Try Ed25519 first, then fall back to secp256k1
+    let keypair: Keypair;
+    let adminAddress: string;
+    
+    try {
+      // Try Ed25519 first
+      keypair = Ed25519Keypair.fromSecretKey(fromB64(adminPrivateKey));
+      adminAddress = keypair.toSuiAddress();
+    } catch (ed25519Error) {
+      try {
+        // Fall back to secp256k1
+        keypair = Secp256k1Keypair.fromSecretKey(fromB64(adminPrivateKey));
+        adminAddress = keypair.toSuiAddress();
+      } catch (secp256k1Error) {
+        return NextResponse.json(
+          { 
+            error: 'Invalid admin private key format. Key must be base64-encoded Ed25519 or secp256k1 private key.',
+            details: 'Failed to load keypair with both Ed25519 and secp256k1 schemes.'
+          },
+          { status: 500 }
+        );
+      }
+    }
 
     // Create a Programmable Transaction Block that mints both NFT and CORK tokens
     const tx = new Transaction();

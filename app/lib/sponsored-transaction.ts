@@ -83,10 +83,25 @@ export async function sponsorTransaction(
       status: response.status,
       statusText: response.statusText,
       error: errorDetails,
+      fullResponse: errorDetails,
     });
     
-    const errorMessage = errorDetails.error || errorDetails.details || `Failed to sponsor transaction: ${response.status} ${response.statusText}`;
-    throw new Error(errorMessage);
+    // Use the most detailed error message available
+    const errorMessage = errorDetails.error || 
+                         errorDetails.details || 
+                         errorDetails.enokiDetails?.message ||
+                         `Failed to sponsor transaction: ${response.status} ${response.statusText}`;
+    
+    // Include additional context if available
+    let fullErrorMessage = errorMessage;
+    if (errorDetails.code) {
+      fullErrorMessage += ` (Code: ${errorDetails.code})`;
+    }
+    if (errorDetails.enokiDetails) {
+      fullErrorMessage += ` - ${JSON.stringify(errorDetails.enokiDetails)}`;
+    }
+    
+    throw new Error(fullErrorMessage);
   }
 
   const result = await response.json();

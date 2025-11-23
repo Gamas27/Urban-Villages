@@ -45,22 +45,74 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Validate API key format (basic check)
+    const apiKey = process.env.ENOKI_PRIVATE_API_KEY;
+    if (!apiKey || apiKey.length < 10) {
+      console.error('[POST /api/sponsor-transaction] Invalid API key format');
+      return NextResponse.json(
+        { 
+          error: 'Invalid Enoki API key configuration',
+          details: 'ENOKI_PRIVATE_API_KEY appears to be invalid or too short. Please check your Vercel environment variables.'
+        },
+        { status: 500 }
+      );
+    }
+
     console.log('[POST /api/sponsor-transaction] Sponsoring transaction:', {
       sender,
       network,
       transactionKindSize: transactionKindBytes.length,
-      hasApiKey: !!process.env.ENOKI_PRIVATE_API_KEY,
+      hasApiKey: !!apiKey,
+      apiKeyLength: apiKey.length,
+      apiKeyPrefix: apiKey.substring(0, 8) + '...',
     });
 
     // Create sponsored transaction using Enoki
-    const sponsoredTx = await enokiClient.createSponsoredTransaction({
-      network: network as 'testnet' | 'mainnet' | 'devnet',
-      transactionKindBytes,
-      sender,
-      // Optional: Add allowed targets/addresses for security
-      // allowedMoveCallTargets: [...],
-      // allowedAddresses: [...],
-    });
+    let sponsoredTx;
+    try {
+      sponsoredTx = await enokiClient.createSponsoredTransaction({
+        network: network as 'testnet' | 'mainnet' | 'devnet',
+        transactionKindBytes,
+        sender,
+        // Optional: Add allowed targets/addresses for security
+        // allowedMoveCallTargets: [...],
+        // allowedAddresses: [...],
+      });
+    } catch (enokiError: any) {
+      // Handle Enoki-specific errors
+      const enokiErrorMsg = enokiError?.message || 'Unknown Enoki error';
+      const enokiErrorCode = enokiError?.code || enokiError?.statusCode || 'UNKNOWN';
+      const enokiErrorDetails = enokiError?.response?.data || enokiError?.data || enokiError?.body;
+      
+      console.error('[POST /api/sponsor-transaction] ❌ Enoki API error:', {
+        message: enokiErrorMsg,
+        code: enokiErrorCode,
+        details: enokiErrorDetails,
+        fullError: enokiError,
+      });
+      
+      // Provide user-friendly error messages
+      let userFriendlyError = 'Failed to sponsor transaction';
+      if (enokiErrorMsg.includes('401') || enokiErrorMsg.includes('Unauthorized') || enokiErrorMsg.includes('Invalid API key')) {
+        userFriendlyError = 'Invalid Enoki API key. Please check your ENOKI_PRIVATE_API_KEY in Vercel environment variables.';
+      } else if (enokiErrorMsg.includes('403') || enokiErrorMsg.includes('Forbidden')) {
+        userFriendlyError = 'Enoki API key does not have permission to sponsor transactions. Check your Enoki project settings.';
+      } else if (enokiErrorMsg.includes('429') || enokiErrorMsg.includes('rate limit')) {
+        userFriendlyError = 'Rate limit exceeded. Please try again in a moment.';
+      } else if (enokiErrorMsg.includes('insufficient') || enokiErrorMsg.includes('balance')) {
+        userFriendlyError = 'Insufficient funds in Enoki gas pool. Please fund your gas pool in the Enoki dashboard.';
+      }
+      
+      return NextResponse.json(
+        { 
+          error: userFriendlyError,
+          details: enokiErrorMsg,
+          code: enokiErrorCode,
+          enokiDetails: enokiErrorDetails,
+        },
+        { status: 500 }
+      );
+    }
 
     console.log('[POST /api/sponsor-transaction] ✅ Transaction sponsored successfully');
 
@@ -71,16 +123,20 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : 'Unknown error';
     const errorStack = error instanceof Error ? error.stack : undefined;
+    const errorName = error instanceof Error ? error.name : 'Unknown';
     
-    console.error('[POST /api/sponsor-transaction] ❌ Failed to sponsor transaction:', {
-      error: errorMsg,
+    console.error('[POST /api/sponsor-transaction] ❌ Unexpected error:', {
+      name: errorName,
+      message: errorMsg,
       stack: errorStack,
+      fullError: error,
     });
     
     return NextResponse.json(
       { 
         error: 'Failed to sponsor transaction',
-        details: errorMsg
+        details: errorMsg,
+        type: 'unexpected_error',
       },
       { status: 500 }
     );

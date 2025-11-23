@@ -1,23 +1,45 @@
 # Vercel Environment Variables Setup
 
-## 🔧 Required Environment Variables for Google Login
+## 🔧 Required Environment Variables
+
+### For Google Login (via Enoki)
 
 To enable Google login via Enoki on your Vercel deployment, you need to set these environment variables:
 
-### 1. Enoki API Key
+#### 1. Enoki Public API Key
 ```
 NEXT_PUBLIC_ENOKI_API_KEY=enoki_public_eb523fdb1cee2b3efce6381a717bf634
 ```
 
-### 2. Google Client ID (REQUIRED for Google login)
+#### 2. Google Client ID (REQUIRED for Google login)
 ```
 NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_google_client_id_here.apps.googleusercontent.com
 ```
 
-### 3. Network (optional, defaults to testnet)
+#### 3. Network (optional, defaults to testnet)
 ```
 NEXT_PUBLIC_SUI_NETWORK=testnet
 ```
+
+### For Transaction Sponsorship (Gasless Transactions)
+
+To enable sponsored transactions (gasless transactions), you need to set:
+
+#### 4. Enoki Private API Key (REQUIRED for transaction sponsorship)
+```
+ENOKI_PRIVATE_API_KEY=enoki_private_171c5584dce22874b2b9f27715e9caf3
+```
+
+**⚠️ Important:**
+- This is a **PRIVATE** key - never expose it in client-side code
+- Only use it in server-side API routes (like `/api/sponsor-transaction`)
+- Get this from your [Enoki Developer Portal](https://enoki.mystenlabs.com/) project settings
+- Make sure your Enoki project has a funded Gas Pool for sponsoring transactions
+
+**Without this key:**
+- Namespace registration will fail with "Failed to sponsor transaction" error
+- Users will need to pay gas fees themselves
+- Transaction sponsorship features will not work
 
 ## 📋 How to Set Environment Variables in Vercel
 
@@ -124,6 +146,7 @@ This means Enoki is not initialized or Google Client ID is missing:
 
 ## 📝 Quick Checklist
 
+### Google Login Setup
 - [ ] `NEXT_PUBLIC_ENOKI_API_KEY` set in Vercel
 - [ ] `NEXT_PUBLIC_GOOGLE_CLIENT_ID` set in Vercel
 - [ ] Variables set for all environments (Production, Preview, Development)
@@ -131,6 +154,13 @@ This means Enoki is not initialized or Google Client ID is missing:
 - [ ] Application redeployed after adding variables
 - [ ] Browser console shows "Enoki initialized successfully with Google login"
 - [ ] "Connect Wallet" shows Enoki/Google option
+
+### Transaction Sponsorship Setup
+- [ ] `ENOKI_PRIVATE_API_KEY` set in Vercel (as **Environment Variable**, not Public)
+- [ ] Enoki Gas Pool is funded in Enoki Developer Portal
+- [ ] Application redeployed after adding the private key
+- [ ] Namespace registration works without user paying gas fees
+- [ ] No "Failed to sponsor transaction" errors in console
 
 ---
 

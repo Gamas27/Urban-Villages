@@ -56,12 +56,13 @@ NEXT_PUBLIC_BOTTLE_ADMIN_CAP_ID=0xd4df8247a68009ee730b405f38f62f49d7b07a5644b545
 
 #### 5. Admin Private Key (Backend Only)
 ```env
-ADMIN_PRIVATE_KEY=<base64-encoded-ed25519-private-key>
+ADMIN_PRIVATE_KEY=<base64-encoded-private-key>
 ```
 - **Status:** ⚠️ NEEDS TO BE SET
 - **Used in:** `app/api/mint-purchase/route.ts` (server-side only)
 - **Required:** Yes - Purchase → Mint flow won't work without this
 - **Security:** ⚠️ NEVER expose this to frontend! Backend only!
+- **Key Scheme:** Supports both Ed25519 and secp256k1 (deployer uses secp256k1)
 - **How to get:** Export from the wallet that deployed contracts
 
 ---
@@ -179,8 +180,23 @@ NEXT_PUBLIC_BOTTLE_ADMIN_CAP_ID=0xd4df8247a68009ee730b405f38f62f49d7b07a5644b545
 # ADMIN PRIVATE KEY (BACKEND ONLY - CRITICAL!)
 # ============================================
 # ⚠️ NEVER commit this to git!
-# Export from the wallet that deployed contracts:
-# sui keytool export --key-identity <key-alias> --key-encoding base64
+# 
+# Step 1: Find the key alias for the deployer wallet
+#   sui keytool list
+#   (Look for the key that matches deployer address: 0x951ffaa17abaf3202acf52125d711df9f71f318c0772a08daeaf6d1d978b6f2f)
+#   Note: The deployer key is secp256k1 (keyScheme: secp256k1), which is supported!
+#
+# Step 2: Export the private key in base64 format
+#   sui keytool export --key-identity <key-alias> --key-encoding base64
+#   (Copy the output - this is your ADMIN_PRIVATE_KEY)
+#   Example: sui keytool export --key-identity intelligent-avanturine --key-encoding base64
+#
+# Step 3: Verify the exported key matches the deployer address
+#   sui keytool derive-address --key-identity <key-alias>
+#   (Should show: 0x951ffaa17abaf3202acf52125d711df9f71f318c0772a08daeaf6d1d978b6f2f)
+#
+# Step 4: Paste the base64 key below (no quotes, no spaces)
+#   Note: Both Ed25519 and secp256k1 key schemes are supported
 ADMIN_PRIVATE_KEY=<base64-encoded-private-key>
 
 # ============================================
@@ -261,13 +277,37 @@ NEXT_PUBLIC_BASE_URL=https://your-domain.vercel.app
 ## 🔧 How to Get Missing Values
 
 ### 1. Admin Private Key
-```bash
-# If you have the key in sui keystore:
-sui keytool export --key-identity <key-alias> --key-encoding base64
 
-# Or if you have the raw private key:
-# Convert to base64: echo -n "<private-key-hex>" | xxd -r -p | base64
+**Deployer Address:** `0x951ffaa17abaf3202acf52125d711df9f71f318c0772a08daeaf6d1d978b6f2f`
+
+**If the key is in your Sui keystore:**
+```bash
+# Step 1: List all keys to find the alias
+sui keytool list
+# Look for the key with address: 0x951ffaa17abaf3202acf52125d711df9f71f318c0772a08daeaf6d1d978b6f2f
+# Example alias: intelligent-avanturine (keyScheme: secp256k1)
+
+# Step 2: Verify which key matches the deployer address
+sui keytool derive-address --key-identity <key-alias>
+# Should show: 0x951ffaa17abaf3202acf52125d711df9f71f318c0772a08daeaf6d1d978b6f2f
+
+# Step 3: Export the private key in base64 format
+sui keytool export --key-identity <key-alias> --key-encoding base64
+# Example: sui keytool export --key-identity intelligent-avanturine --key-encoding base64
+# Copy the output and paste it as ADMIN_PRIVATE_KEY in .env.local
+# Note: Both Ed25519 and secp256k1 keys work - the code auto-detects the scheme
 ```
+
+**If you have the raw private key in hex format:**
+```bash
+# Convert hex to base64
+echo -n "<private-key-hex>" | xxd -r -p | base64
+# Copy the output and paste it as ADMIN_PRIVATE_KEY in .env.local
+```
+
+**If the key is not in your keystore:**
+- Check `docs/FIND_DEPLOYER_KEY.md` for detailed troubleshooting
+- The key might be in a different keystore location or wallet extension
 
 ### 2. Google Client ID
 1. Go to https://console.cloud.google.com/apis/credentials
