@@ -5,6 +5,7 @@ import { Onboarding } from './Onboarding';
 import { MainApp } from './MainApp';
 import { useCurrentAccount } from '@mysten/dapp-kit';
 import { useSignAndExecuteTransaction } from '@mysten/dapp-kit';
+import { Transaction } from '@mysten/sui/transactions';
 import { useUserStore, useUserProfile } from '@/lib/stores/userStore';
 import { useBackendStore } from '@/lib/stores/backendStore';
 import { useBlockchainStore } from '@/lib/stores/blockchainStore';
@@ -13,7 +14,14 @@ import { saveUserProfile, trackOnboardingEvent, logTransaction } from '@/lib/api
 
 export default function CorkApp() {
   const account = useCurrentAccount();
-  const { mutateAsync: signAndExecute } = useSignAndExecuteTransaction();
+  const { mutateAsync: signAndExecuteMutate } = useSignAndExecuteTransaction();
+  
+  // Wrapper function to match expected signature
+  const signAndExecute = async (params: { transaction: Transaction }): Promise<{ digest: string }> => {
+    // Type assertion to handle potential version mismatches between Transaction types
+    const result = await signAndExecuteMutate(params as any);
+    return { digest: result.digest };
+  };
   const profile = useUserProfile();
   const { setProfile, updateProfile, setLoading, setError, loading, error: registrationError } = useUserStore();
   const { syncProfile } = useBackendStore();
