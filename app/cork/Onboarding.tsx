@@ -47,11 +47,18 @@ export function Onboarding({ onComplete }: OnboardingProps) {
     reader.readAsDataURL(file);
 
     // Upload to Walrus using Enoki wallet (via dapp-kit)
+    console.log('[Onboarding] Starting profile picture upload to Walrus...');
     const result = await uploadFile(file);
     if (result) {
+      console.log('[Onboarding] ✅ Profile picture uploaded successfully:', {
+        blobId: result.blobId,
+        url: result.url,
+      });
       setProfilePicBlobId(result.blobId);
     } else {
-      console.error('Walrus upload failed:', walrusError);
+      console.error('[Onboarding] ❌ Walrus upload failed:', walrusError);
+      // Clear preview if upload failed
+      setPreviewUrl(null);
     }
   };
 
@@ -64,7 +71,15 @@ export function Onboarding({ onComplete }: OnboardingProps) {
       profilePicBlobId: profilePicBlobId || undefined,
     };
     
+    console.log('[Onboarding] Completing onboarding with data:', {
+      username: onboardingData.username,
+      village: onboardingData.village,
+      hasProfilePic: !!onboardingData.profilePicBlobId,
+      profilePicBlobId: onboardingData.profilePicBlobId,
+    });
+    
     // Note: Profile will be stored in Zustand store (which also persists to sessionStorage)
+    // The profilePicBlobId will be saved to Supabase when saveUserProfile is called in CorkApp
     onComplete(onboardingData);
   };
 

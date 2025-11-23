@@ -70,6 +70,32 @@ export function getWalrusUrl(blobId: string, network: 'testnet' | 'mainnet' = 't
 }
 
 /**
+ * Verify that a blob exists in Walrus by attempting to fetch it
+ * @param blobId - The blob ID to verify
+ * @param network - Network to check (testnet or mainnet)
+ * @returns true if blob exists and is accessible, false otherwise
+ */
+export async function verifyWalrusBlob(blobId: string, network: 'testnet' | 'mainnet' = 'testnet'): Promise<boolean> {
+  try {
+    const url = getWalrusUrl(blobId, network);
+    console.log('[verifyWalrusBlob] Verifying blob exists:', { blobId, url });
+    
+    const response = await fetch(url, {
+      method: 'HEAD', // Use HEAD to avoid downloading the entire file
+      cache: 'no-cache',
+    });
+    
+    const exists = response.ok;
+    console.log(`[verifyWalrusBlob] Blob ${exists ? '✅ exists' : '❌ not found'}:`, { blobId, status: response.status });
+    
+    return exists;
+  } catch (error) {
+    console.error('[verifyWalrusBlob] Error verifying blob:', { blobId, error });
+    return false;
+  }
+}
+
+/**
  * Get WalrusCan explorer URL
  */
 export function getWalrusScanUrl(blobId: string, network: 'testnet' | 'mainnet' = 'testnet'): string {

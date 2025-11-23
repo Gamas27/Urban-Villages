@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useCurrentAccount, useSuiClient, useSignAndExecuteTransaction } from '@mysten/dapp-kit';
-import { getWalrusUrl } from '../walrus';
+import { getWalrusUrl, verifyWalrusBlob } from '../walrus';
 import { getWalrusClient } from '../walrus/client';
 import { WalrusFile } from '@mysten/walrus';
 
@@ -231,8 +231,26 @@ export function useEnokiWalrusUpload() {
         throw new Error('Failed to get blobId after upload');
       }
 
+      // Step 8: Verify blob exists in Walrus before returning
+      console.log('[Walrus] Step 8: Verifying blob exists in Walrus...');
+      const blobExists = await verifyWalrusBlob(blobId, 'testnet');
+      
+      if (!blobExists) {
+        console.error('[Walrus] ⚠️ Blob verification failed - blob may not be accessible yet');
+        // Wait a bit and retry verification (blob might need time to propagate)
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        const retryExists = await verifyWalrusBlob(blobId, 'testnet');
+        
+        if (!retryExists) {
+          throw new Error(`Blob ${blobId} is not accessible in Walrus. Upload may have failed.`);
+        }
+        console.log('[Walrus] ✅ Blob verified after retry');
+      } else {
+        console.log('[Walrus] ✅ Blob verified successfully');
+      }
+
       const metadataId = blobObjectId || blobId;
-      console.log('[Walrus] Upload successful! blobId:', blobId, 'metadataId:', metadataId);
+      console.log('[Walrus] Upload successful! blobId:', blobId, 'metadataId:', metadataId, 'verified:', blobExists);
 
       return {
         blobId,

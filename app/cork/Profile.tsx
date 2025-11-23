@@ -7,7 +7,9 @@ import { useUserProfile, useUserNamespace, useUserVillage } from '@/lib/stores/u
 import { useBackendProfile, useBackendStore } from '@/lib/stores/backendStore';
 import { WalrusImage } from '@/components/WalrusImage';
 import { useCurrentAccount, useSuiClientQuery } from '@mysten/dapp-kit';
-import { useMemo, useEffect } from 'react';
+import { useMemo, useEffect, useState } from 'react';
+import { verifyWalrusBlob } from '@/lib/walrus';
+import { saveUserProfile } from '@/lib/api/userTracking';
 
 export function Profile() {
   const profile = useUserProfile();
@@ -49,18 +51,45 @@ export function Profile() {
     return merged;
   }, [profile, backendProfile]);
 
-  // Log when profilePicBlobId is available for rendering
+  const [validatedBlobId, setValidatedBlobId] = useState<string | null>(null);
+
+  // Verify blob exists in Walrus when profilePicBlobId is available
   useEffect(() => {
-    if (mergedProfile?.profilePicBlobId) {
-      console.log('[Profile] 📸 Profile picture blobId available, will render from Walrus:', {
+    if (mergedProfile?.profilePicBlobId && account?.address) {
+      console.log('[Profile] 📸 Profile picture blobId available, verifying in Walrus:', {
         blobId: mergedProfile.profilePicBlobId,
         username: mergedProfile.username,
         source: backendProfile?.profilePicBlobId ? 'backend' : 'userStore',
       });
+      
+      // Verify blob exists
+      verifyWalrusBlob(mergedProfile.profilePicBlobId, 'testnet').then((exists) => {
+        if (exists) {
+          console.log('[Profile] ✅ Blob verified, will render from Walrus');
+          setValidatedBlobId(mergedProfile.profilePicBlobId!);
+        } else {
+          console.warn('[Profile] ⚠️ Blob not found in Walrus, will show fallback. BlobId may be invalid:', {
+            blobId: mergedProfile.profilePicBlobId,
+          });
+          setValidatedBlobId(null);
+          
+          // Optionally clean up invalid blobId from database
+          if (account.address && backendProfile?.profilePicBlobId === mergedProfile.profilePicBlobId) {
+            console.log('[Profile] Cleaning up invalid blobId from database...');
+            saveUserProfile({
+              walletAddress: account.address,
+              profilePicBlobId: undefined, // Clear invalid blobId
+            }).then(() => {
+              console.log('[Profile] Invalid blobId cleared from database');
+            });
+          }
+        }
+      });
     } else if (mergedProfile) {
       console.log('[Profile] ℹ️ No profilePicBlobId, will show gradient fallback');
+      setValidatedBlobId(null);
     }
-  }, [mergedProfile?.profilePicBlobId, mergedProfile?.username, backendProfile?.profilePicBlobId]);
+  }, [mergedProfile?.profilePicBlobId, mergedProfile?.username, backendProfile?.profilePicBlobId, account?.address]);
   
   const village = getVillageById(userVillage || 'lisbon');
   
@@ -135,9 +164,9 @@ export function Profile() {
         <div className="px-6 pb-6">
           {/* Profile Picture */}
           <div className="flex justify-between items-end -mt-16 mb-4">
-            {mergedProfile.profilePicBlobId ? (
+            {validatedBlobId ? (
               <WalrusImage
-                blobId={mergedProfile.profilePicBlobId}
+                blobId={validatedBlobId}
                 alt={mergedProfile.username}
                 className="w-24 h-24 rounded-full border-4 border-white shadow-lg object-cover"
                 type="profile"

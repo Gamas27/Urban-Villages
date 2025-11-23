@@ -93,7 +93,14 @@ export default function CorkApp() {
 
           // Sync to backend (after blockchain confirmation)
           try {
-            await saveUserProfile({
+            console.log('[CorkApp] Saving profile to Supabase database:', {
+              walletAddress: account.address,
+              username: data.username,
+              village: data.village,
+              profilePicBlobId: data.profilePicBlobId,
+            });
+            
+            const saveResult = await saveUserProfile({
               walletAddress: account.address,
               username: data.username,
               village: data.village,
@@ -101,6 +108,15 @@ export default function CorkApp() {
               profilePicBlobId: data.profilePicBlobId,
               onboardingCompleted: true,
             });
+            
+            if (saveResult) {
+              console.log('[CorkApp] ✅ Profile saved to Supabase:', {
+                profilePicBlobId: saveResult.data?.profile_pic_blob_id,
+                username: saveResult.data?.username,
+              });
+            } else {
+              console.error('[CorkApp] ❌ Failed to save profile to Supabase');
+            }
 
             // Track completion event
             await trackOnboardingEvent(account.address, 'completed', {
