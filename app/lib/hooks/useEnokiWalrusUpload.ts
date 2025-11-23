@@ -104,6 +104,13 @@ export function useEnokiWalrusUpload() {
    * Perform the actual upload with timeout handling
    */
   const performUpload = async (file: File): Promise<UploadResult> => {
+    if (!currentAccount) {
+      throw new Error('Account is required for upload');
+    }
+
+    // Store account in const for TypeScript narrowing
+    const account = currentAccount;
+
     // Timeout wrapper (30 seconds max)
     const timeoutMs = 30000;
     const timeoutPromise = new Promise<never>((_, reject) => {
@@ -134,7 +141,7 @@ export function useEnokiWalrusUpload() {
 
         // Step 2: Register (returns transaction)
         const registerTx = flow.register({
-          owner: currentAccount.address,
+          owner: account.address,
           epochs: 10,
           deletable: true,
         });

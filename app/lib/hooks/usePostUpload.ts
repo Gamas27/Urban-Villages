@@ -113,6 +113,10 @@ export function usePostUpload() {
    * Perform the actual post upload with timeout handling
    */
   const performPostUpload = async (postContent: PostContent): Promise<PostUploadResult> => {
+    if (!account) {
+      throw new Error('Account is required for upload');
+    }
+
     // Timeout wrapper (30 seconds max)
     const timeoutMs = 30000;
     const timeoutPromise = new Promise<never>((_, reject) => {
