@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Package, QrCode, Sparkles, Trophy, Search, Filter, Grid3x3, LayoutList, Share2, Download, ExternalLink, Calendar, MapPin, Award } from 'lucide-react';
+import { Package, QrCode, Sparkles, Search, Filter, Grid3x3, LayoutList, Share2, Download, ExternalLink, Calendar, MapPin, Award } from 'lucide-react';
 import { MOCK_USER } from './data/mockData';
 import { getVillageById } from './data/villages';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,6 @@ interface CollectionProps {
   village: string;
 }
 
-type CollectionTab = 'all' | 'village' | 'rare';
 type ViewMode = 'grid' | 'list';
 
 interface NFTBottle {
@@ -39,7 +38,6 @@ interface NFTBottle {
 export function Collection({ village }: CollectionProps) {
   const account = useCurrentAccount();
   const currentVillage = getVillageById(village);
-  const [activeTab, setActiveTab] = useState<CollectionTab>('all');
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedBottle, setSelectedBottle] = useState<NFTBottle | null>(null);
@@ -181,15 +179,10 @@ export function Collection({ village }: CollectionProps) {
     },
   };
 
-  // Filter bottles based on search and active tab
+  // Filter bottles based on search
   const filteredBottles = nftBottles.filter(bottle => {
     const matchesSearch = bottle.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          bottle.attributes.vineyard.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    if (activeTab === 'all') return matchesSearch;
-    if (activeTab === 'village') return matchesSearch && bottle.village === village;
-    if (activeTab === 'rare') return matchesSearch && (bottle.rarity === 'Rare' || bottle.rarity === 'Legendary');
-    
     return matchesSearch;
   });
 
@@ -216,51 +209,6 @@ export function Collection({ village }: CollectionProps) {
         loadingText="Loading your collection..."
         errorTitle="Failed to load collection"
       >
-        {/* Collection Tabs */}
-      <div className="sticky top-[72px] z-20 bg-white border-b border-gray-200">
-        <div className="flex items-center max-w-2xl mx-auto">
-          <button
-            onClick={() => setActiveTab('all')}
-            className={`flex-1 py-4 text-sm font-medium transition-colors relative ${
-              activeTab === 'all'
-                ? 'text-purple-600'
-                : 'text-gray-600'
-            }`}
-          >
-            All Bottles
-            {activeTab === 'all' && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-600" />
-            )}
-          </button>
-          <button
-            onClick={() => setActiveTab('village')}
-            className={`flex-1 py-4 text-sm font-medium transition-colors relative ${
-              activeTab === 'village'
-                ? 'text-purple-600'
-                : 'text-gray-600'
-            }`}
-          >
-            This Village
-            {activeTab === 'village' && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-600" />
-            )}
-          </button>
-          <button
-            onClick={() => setActiveTab('rare')}
-            className={`flex-1 py-4 text-sm font-medium transition-colors relative ${
-              activeTab === 'rare'
-                ? 'text-purple-600'
-                : 'text-gray-600'
-            }`}
-          >
-            Rare & Legendary
-            {activeTab === 'rare' && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-600" />
-            )}
-          </button>
-        </div>
-      </div>
-
       <div className="p-4 pb-6 space-y-4">
         {/* Stats Header */}
         <div className="bg-gradient-to-br from-orange-500 to-purple-600 rounded-2xl p-6 text-white shadow-lg">
@@ -297,28 +245,6 @@ export function Collection({ village }: CollectionProps) {
               <div className="text-xl mb-1">🏘️</div>
               <div className="text-sm">{stats.villages}</div>
               <div className="text-[10px] text-white/70">Villages</div>
-            </div>
-          </div>
-        </div>
-
-        {/* Hero Feature Callout */}
-        <div className="bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl p-5 text-white shadow-md">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 bg-white/20 backdrop-blur rounded-full flex items-center justify-center flex-shrink-0">
-              <Trophy className="w-5 h-5" />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-semibold mb-1">🏆 Hackathon Hero Feature</h3>
-              <p className="text-xs text-white/90 mb-2">
-                Each bottle is a unique SUI NFT with provenance data stored on Walrus. Scan QR codes on physical bottles to verify authenticity!
-              </p>
-              <div className="flex items-center gap-2 text-[10px] text-white/80">
-                <span>✓ SUI Blockchain</span>
-                <span>•</span>
-                <span>✓ Walrus Storage</span>
-                <span>•</span>
-                <span>✓ QR Verification</span>
-              </div>
             </div>
           </div>
         </div>

@@ -163,6 +163,18 @@ export function MainApp() {
           </button>
 
           <button
+            onClick={() => setActiveTab('friends')}
+            className={`flex flex-col items-center justify-center gap-1 p-3 min-w-[64px] transition-colors duration-200 ${
+              activeTab === 'friends'
+                ? 'text-purple-600'
+                : 'text-gray-500'
+            }`}
+          >
+            <Users className={`w-6 h-6 transition-all duration-200 ${activeTab === 'friends' ? 'fill-purple-600' : ''}`} />
+            <span className={`text-[10px] ${activeTab === 'friends' ? 'font-semibold' : 'font-medium'}`}>Friends</span>
+          </button>
+
+          <button
             onClick={() => setShowPostComposer(true)}
             className="flex items-center justify-center w-14 h-14 -mt-7 bg-gradient-to-r from-orange-500 to-purple-600 text-white rounded-full shadow-[0_8px_16px_rgba(168,85,247,0.4)] hover:shadow-[0_12px_20px_rgba(168,85,247,0.5)] transition-all duration-200 hover:scale-105 active:scale-95"
           >
