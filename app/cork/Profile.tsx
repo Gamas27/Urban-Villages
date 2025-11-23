@@ -158,12 +158,9 @@ export function Profile() {
     <div className="min-h-screen p-4 pb-24 bg-gray-50">
       {/* Profile Header */}
       <div className="bg-white rounded-2xl overflow-hidden shadow-sm mb-4">
-        {/* Cover with village gradient */}
-        <div className={`h-32 bg-gradient-to-r ${village?.gradient || 'from-purple-500 to-purple-700'}`} />
-        
-        <div className="px-6 pb-6">
+        <div className="px-6 pb-6 pt-6">
           {/* Profile Picture */}
-          <div className="flex justify-between items-end -mt-16 mb-4">
+          <div className="flex justify-between items-end mb-4">
             {validatedBlobId ? (
               <WalrusImage
                 blobId={validatedBlobId}
