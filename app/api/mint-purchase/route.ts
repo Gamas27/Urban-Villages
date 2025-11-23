@@ -113,24 +113,34 @@ export async function POST(req: NextRequest) {
       customText,       // Optional custom text
     } = body;
 
+    // Ensure all string fields are actually strings (not objects)
+    const wineNameStr = String(wineName || '');
+    const regionStr = String(region || '');
+    const wineryStr = String(winery || '');
+    const wineTypeStr = String(wineType || '');
+    const vintageNum = Number(vintage) || new Date().getFullYear();
+    const imageUrlStr = String(imageUrl || '');
+    const qrCodeStr = String(qrCode || `QR-${Date.now()}`);
+    const customTextStr = customText ? String(customText) : null;
+    
     console.log('[mint-purchase] 📋 Request data:', {
       recipient,
-      wineName,
-      vintage,
-      region,
-      winery,
-      wineType,
+      wineName: wineNameStr,
+      vintage: vintageNum,
+      region: regionStr,
+      winery: wineryStr,
+      wineType: wineTypeStr,
       corkAmount: corkAmount || 50,
     });
 
-    if (!recipient || !wineName || !vintage || !region || !winery || !wineType) {
+    if (!recipient || !wineNameStr || !regionStr || !wineryStr || !wineTypeStr) {
       console.error('[mint-purchase] ❌ Missing required fields:', {
         hasRecipient: !!recipient,
-        hasWineName: !!wineName,
-        hasVintage: !!vintage,
-        hasRegion: !!region,
-        hasWinery: !!winery,
-        hasWineType: !!wineType,
+        hasWineName: !!wineNameStr,
+        hasVintage: !!vintageNum,
+        hasRegion: !!regionStr,
+        hasWinery: !!wineryStr,
+        hasWineType: !!wineTypeStr,
       });
       return NextResponse.json(
         { 
@@ -225,17 +235,17 @@ export async function POST(req: NextRequest) {
       arguments: [
         tx.object(bottleAdminCapId),      // AdminCap (owned by deployer)
         tx.object(bottleRegistryId),      // QRRegistry (shared object)
-        tx.pure.string(wineName),         // name
-        tx.pure.u64(Number(vintage)),     // vintage
-        tx.pure.string(region),           // region
-        tx.pure.string(winery),            // winery
-        tx.pure.string(wineType),         // wine_type
+        tx.pure.string(wineNameStr),      // name
+        tx.pure.u64(vintageNum),          // vintage
+        tx.pure.string(regionStr),        // region
+        tx.pure.string(wineryStr),        // winery
+        tx.pure.string(wineTypeStr),      // wine_type
         tx.pure.u64(Number(bottleNumber || 1)), // bottle_number
         tx.pure.u64(Number(totalSupply || 500)), // total_supply
-        // @ts-expect-error - tx.pure.option type definition issue with transaction arguments
-        tx.pure.option('string', customText ? tx.pure.string(customText) : null), // custom_text
-        tx.pure.string(imageUrl || ''),    // image_url
-        tx.pure.string(qrCode || `QR-${Date.now()}`), // qr_code
+        // custom_text: Option<String> - pass string directly or null
+        tx.pure.option('string', customTextStr), // custom_text
+        tx.pure.string(imageUrlStr),      // image_url
+        tx.pure.string(qrCodeStr),       // qr_code
         tx.pure.address(recipient),       // recipient
         tx.object('0x6'),                 // Clock
       ],
