@@ -155,14 +155,38 @@ export default function CorkApp() {
             // Don't fail onboarding if backend sync fails
           }
         } else {
-          setError(result.error || 'Failed to register namespace');
-          console.error('Namespace registration failed:', result.error);
+          // Provide more helpful error messages
+          let errorMessage = result.error || 'Failed to register namespace';
+          
+          // Check for common issues
+          if (errorMessage.includes('Enoki private API key not configured')) {
+            errorMessage = 'Transaction sponsorship is not configured. Please contact support.';
+          } else if (errorMessage.includes('Failed to sponsor transaction')) {
+            errorMessage = 'Unable to sponsor transaction. This may be due to network issues or configuration problems. Please try again or contact support.';
+          }
+          
+          setError(errorMessage);
+          console.error('[CorkApp] Namespace registration failed:', {
+            error: result.error,
+            fullResult: result,
+          });
           // Continue with onboarding even if registration fails
         }
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-        setError(errorMsg);
-        console.error('Failed to register namespace:', error);
+        
+        // Provide more helpful error messages
+        let userFriendlyError = errorMsg;
+        if (errorMsg.includes('Failed to sponsor transaction')) {
+          userFriendlyError = 'Unable to sponsor transaction. This may be due to network issues or configuration problems. Please try again or contact support.';
+        }
+        
+        setError(userFriendlyError);
+        console.error('[CorkApp] Failed to register namespace:', {
+          error,
+          message: errorMsg,
+          stack: error instanceof Error ? error.stack : undefined,
+        });
         // Continue with onboarding even if registration fails
       } finally {
         setLoading(false);

@@ -53,6 +53,12 @@ export async function sponsorTransaction(
   }
 
   // Send to backend API to sponsor
+  console.log('[sponsorTransaction] Requesting sponsorship:', {
+    sender,
+    network,
+    transactionKindSize: transactionKindBytes.length,
+  });
+
   const response = await fetch('/api/sponsor-transaction', {
     method: 'POST',
     headers: {
@@ -66,11 +72,25 @@ export async function sponsorTransaction(
   });
 
   if (!response.ok) {
-    const error = await response.json();
-    throw new Error(error.error || `Failed to sponsor transaction: ${response.status} ${response.statusText}`);
+    let errorDetails: any;
+    try {
+      errorDetails = await response.json();
+    } catch {
+      errorDetails = { error: `HTTP ${response.status}: ${response.statusText}` };
+    }
+    
+    console.error('[sponsorTransaction] Sponsorship failed:', {
+      status: response.status,
+      statusText: response.statusText,
+      error: errorDetails,
+    });
+    
+    const errorMessage = errorDetails.error || errorDetails.details || `Failed to sponsor transaction: ${response.status} ${response.statusText}`;
+    throw new Error(errorMessage);
   }
 
   const result = await response.json();
+  console.log('[sponsorTransaction] ✅ Transaction sponsored successfully');
   return result;
 }
 

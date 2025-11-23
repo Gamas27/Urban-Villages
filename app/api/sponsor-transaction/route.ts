@@ -21,8 +21,12 @@ export async function POST(req: NextRequest) {
   try {
     // Check if private API key is configured
     if (!process.env.ENOKI_PRIVATE_API_KEY) {
+      console.error('[POST /api/sponsor-transaction] Enoki private API key not configured');
       return NextResponse.json(
-        { error: 'Enoki private API key not configured. Add ENOKI_PRIVATE_API_KEY to your environment variables.' },
+        { 
+          error: 'Enoki private API key not configured',
+          details: 'Add ENOKI_PRIVATE_API_KEY to your environment variables in Vercel project settings'
+        },
         { status: 500 }
       );
     }
@@ -31,11 +35,22 @@ export async function POST(req: NextRequest) {
     const { transactionKindBytes, sender, network = 'testnet' } = body;
 
     if (!transactionKindBytes || !sender) {
+      console.error('[POST /api/sponsor-transaction] Missing required fields:', {
+        hasTransactionKindBytes: !!transactionKindBytes,
+        hasSender: !!sender,
+      });
       return NextResponse.json(
         { error: 'Missing required fields: transactionKindBytes and sender are required' },
         { status: 400 }
       );
     }
+
+    console.log('[POST /api/sponsor-transaction] Sponsoring transaction:', {
+      sender,
+      network,
+      transactionKindSize: transactionKindBytes.length,
+      hasApiKey: !!process.env.ENOKI_PRIVATE_API_KEY,
+    });
 
     // Create sponsored transaction using Enoki
     const sponsoredTx = await enokiClient.createSponsoredTransaction({
@@ -47,15 +62,25 @@ export async function POST(req: NextRequest) {
       // allowedAddresses: [...],
     });
 
+    console.log('[POST /api/sponsor-transaction] ✅ Transaction sponsored successfully');
+
     return NextResponse.json({
       bytes: sponsoredTx.bytes,
       digest: sponsoredTx.digest,
     });
   } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    
+    console.error('[POST /api/sponsor-transaction] ❌ Failed to sponsor transaction:', {
+      error: errorMsg,
+      stack: errorStack,
+    });
+    
     return NextResponse.json(
       { 
         error: 'Failed to sponsor transaction',
-        details: error instanceof Error ? error.message : 'Unknown error'
+        details: errorMsg
       },
       { status: 500 }
     );
