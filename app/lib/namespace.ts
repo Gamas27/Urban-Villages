@@ -73,21 +73,19 @@ export async function checkNamespaceAvailability(
 }
 
 /**
- * Register a namespace on-chain (using sponsored transactions)
+ * Register a namespace on-chain (using regular transaction signing)
  * 
  * @param username - Username (alphanumeric, lowercase)
  * @param village - Village ID (e.g., 'lisbon', 'porto')
  * @param profilePicBlobId - Walrus blob ID for profile picture (optional)
- * @param executeSponsoredTransaction - Sponsored transaction executor function
- * @param sender - Sender wallet address
+ * @param signAndExecute - Transaction signing function from dapp-kit
  * @returns Transaction digest
  */
 export async function registerNamespace(
   username: string,
   village: string,
   profilePicBlobId: string | undefined,
-  executeSponsoredTransaction: (transaction: Transaction, sender: string) => Promise<{ digest: string }>,
-  sender: string
+  signAndExecute: (params: { transaction: Transaction }) => Promise<{ digest: string }>
 ): Promise<string> {
   // Validate inputs
   if (!username || !village) {
@@ -138,8 +136,8 @@ export async function registerNamespace(
     ],
   });
 
-  // Execute sponsored transaction (gas paid by Enoki Gas Pool)
-  const result = await executeSponsoredTransaction(tx, sender);
+  // Execute transaction (user pays gas)
+  const result = await signAndExecute({ transaction: tx });
   return result.digest;
 }
 

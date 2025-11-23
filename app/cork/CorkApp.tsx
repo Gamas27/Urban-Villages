@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { Onboarding } from './Onboarding';
 import { MainApp } from './MainApp';
 import { useCurrentAccount } from '@mysten/dapp-kit';
-import { useSponsoredTransaction } from '@/lib/hooks/useSponsoredTransaction';
+import { useSignAndExecuteTransaction } from '@mysten/dapp-kit';
 import { useUserStore, useUserProfile } from '@/lib/stores/userStore';
 import { useBackendStore } from '@/lib/stores/backendStore';
 import { useBlockchainStore } from '@/lib/stores/blockchainStore';
@@ -13,7 +13,7 @@ import { saveUserProfile, trackOnboardingEvent, logTransaction } from '@/lib/api
 
 export default function CorkApp() {
   const account = useCurrentAccount();
-  const { executeSponsoredTransaction } = useSponsoredTransaction();
+  const { mutateAsync: signAndExecute } = useSignAndExecuteTransaction();
   const profile = useUserProfile();
   const { setProfile, updateProfile, setLoading, setError, loading, error: registrationError } = useUserStore();
   const { syncProfile } = useBackendStore();
@@ -54,8 +54,7 @@ export default function CorkApp() {
           data.username,
           data.village,
           data.profilePicBlobId,
-          executeSponsoredTransaction,
-          account.address
+          signAndExecute
         );
         
         if (result.success && result.data) {
@@ -159,10 +158,10 @@ export default function CorkApp() {
           let errorMessage = result.error || 'Failed to register namespace';
           
           // Check for common issues
-          if (errorMessage.includes('Enoki private API key not configured')) {
-            errorMessage = 'Transaction sponsorship is not configured. Please contact support.';
-          } else if (errorMessage.includes('Failed to sponsor transaction')) {
-            errorMessage = 'Unable to sponsor transaction. This may be due to network issues or configuration problems. Please try again or contact support.';
+          if (errorMessage.includes('insufficient funds') || errorMessage.includes('gas')) {
+            errorMessage = 'Insufficient SUI tokens for transaction. Please ensure your wallet has enough SUI to pay for gas fees.';
+          } else if (errorMessage.includes('user rejected')) {
+            errorMessage = 'Transaction was cancelled. Please try again.';
           }
           
           setError(errorMessage);
@@ -177,8 +176,10 @@ export default function CorkApp() {
         
         // Provide more helpful error messages
         let userFriendlyError = errorMsg;
-        if (errorMsg.includes('Failed to sponsor transaction')) {
-          userFriendlyError = 'Unable to sponsor transaction. This may be due to network issues or configuration problems. Please try again or contact support.';
+        if (errorMsg.includes('insufficient funds') || errorMsg.includes('gas')) {
+          userFriendlyError = 'Insufficient SUI tokens for transaction. Please ensure your wallet has enough SUI to pay for gas fees.';
+        } else if (errorMsg.includes('user rejected')) {
+          userFriendlyError = 'Transaction was cancelled. Please try again.';
         }
         
         setError(userFriendlyError);
