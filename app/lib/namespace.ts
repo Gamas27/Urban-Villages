@@ -85,7 +85,7 @@ export async function registerNamespace(
   username: string,
   village: string,
   profilePicBlobId: string | undefined,
-  signAndExecute: (params: { transaction: Transaction }, callbacks?: { onSuccess?: (result: { digest: string }) => void; onError?: (error: any) => void }) => void,
+  signAndExecute: any, // Use any to handle dapp-kit mutate function type
   suiClient: any
 ): Promise<string> {
   // Validate inputs
