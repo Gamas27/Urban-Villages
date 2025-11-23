@@ -347,12 +347,6 @@ export function Onboarding({ onComplete }: OnboardingProps) {
                 </div>
               )}
 
-              {account && (
-                <div className="mb-4 p-4 bg-gray-50 rounded-xl border border-gray-200">
-                  <p className="text-xs text-gray-600 mb-2 text-center font-medium">Your wallet address:</p>
-                  <WalletAddress />
-                </div>
-              )}
 
               <div className="flex justify-center">
                 <label className={`cursor-pointer group relative ${!account ? 'opacity-50 cursor-not-allowed' : ''}`}>
