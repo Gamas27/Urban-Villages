@@ -48,111 +48,112 @@ export function Collection({ village }: CollectionProps) {
   const [error, setError] = useState<string | null>(null);
 
   // Fetch owned bottles on mount and when account changes
-  const fetchBottles = async () => {
-    if (!account) {
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const result = await bottleApi.getOwnedBottlesByAddress(account.address);
-        
-        if (result.success && result.data) {
-          if (result.data.length === 0) {
-            // No bottles owned - show empty state
-            setNftBottles([]);
-            setLoading(false);
-            return;
-          }
-          
-          // Transform API data to NFTBottle format
-          const transformedBottles: NFTBottle[] = result.data.map((bottle: any, index: number) => {
-            // Extract blobId from imageUrl if it's a Walrus URL
-            let imageBlobId: string | undefined;
-            let imageUrl = bottle.imageUrl || '';
-            
-            if (isWalrusUrl(imageUrl)) {
-              // Extract blobId from Walrus URL (format: https://aggregator.walrus-testnet.walrus.space/v1/{blobId})
-              const match = imageUrl.match(/\/v1\/([^/?]+)/);
-              if (match) {
-                imageBlobId = match[1];
-              }
-            }
-            
-            // Determine rarity based on bottle number vs total supply
-            const bottleNum = bottle.bottleNumber || 0;
-            const totalSupply = bottle.totalSupply || 1000;
-            const rarityRatio = bottleNum / totalSupply;
-            let rarity: 'Common' | 'Rare' | 'Legendary' = 'Common';
-            if (rarityRatio < 0.1) {
-              rarity = 'Legendary';
-            } else if (rarityRatio < 0.3) {
-              rarity = 'Rare';
-            }
-            
-            // Extract village from region or use default
-            const region = (bottle.region || '').toLowerCase();
-            let village = 'lisbon'; // default
-            if (region.includes('porto') || region.includes('douro')) {
-              village = 'porto';
-            } else if (region.includes('paris') || region.includes('france')) {
-              village = 'paris';
-            }
-            
-            return {
-              id: bottle.objectId || `bottle-${index}`,
-              name: bottle.name || 'Unknown Wine',
-              village,
-              vintage: bottle.vintage || new Date().getFullYear(),
-              mintDate: new Date().toISOString().split('T')[0], // Use current date as fallback
-              image: imageUrl || '',
-              imageBlobId,
-              qrCode: bottle.qrCode || '',
-              rarity,
-              tokenId: bottle.objectId || '',
-              attributes: {
-                vineyard: bottle.winery || 'Unknown Winery',
-                grapes: bottle.wineType || 'Unknown',
-                bottles: `${bottleNum}/${totalSupply}`,
-              },
-            };
-          });
-          
-          setNftBottles(transformedBottles);
-        } else {
-          // No data returned - show empty state
-          setNftBottles([]);
-          if (result.error) {
-            setError(result.error);
-          }
-        }
-      } catch (err) {
-        console.error('Error fetching bottles:', err);
-        setError('Failed to load collection');
-      } finally {
+  useEffect(() => {
+    const fetchBottles = async () => {
+      if (!account) {
         setLoading(false);
+        return;
       }
-    };
 
-    fetchBottles();
+      setLoading(true);
+      setError(null);
 
-    // Listen for purchase completion events to refresh collection
-    const handlePurchaseComplete = () => {
-      // Small delay to allow blockchain state to update
-      setTimeout(() => {
-        fetchBottles();
-      }, 2000);
-    };
+      try {
+        const result = await bottleApi.getOwnedBottlesByAddress(account.address);
+          
+          if (result.success && result.data) {
+            if (result.data.length === 0) {
+              // No bottles owned - show empty state
+              setNftBottles([]);
+              setLoading(false);
+              return;
+            }
+            
+            // Transform API data to NFTBottle format
+            const transformedBottles: NFTBottle[] = result.data.map((bottle: any, index: number) => {
+              // Extract blobId from imageUrl if it's a Walrus URL
+              let imageBlobId: string | undefined;
+              let imageUrl = bottle.imageUrl || '';
+              
+              if (isWalrusUrl(imageUrl)) {
+                // Extract blobId from Walrus URL (format: https://aggregator.walrus-testnet.walrus.space/v1/{blobId})
+                const match = imageUrl.match(/\/v1\/([^/?]+)/);
+                if (match) {
+                  imageBlobId = match[1];
+                }
+              }
+              
+              // Determine rarity based on bottle number vs total supply
+              const bottleNum = bottle.bottleNumber || 0;
+              const totalSupply = bottle.totalSupply || 1000;
+              const rarityRatio = bottleNum / totalSupply;
+              let rarity: 'Common' | 'Rare' | 'Legendary' = 'Common';
+              if (rarityRatio < 0.1) {
+                rarity = 'Legendary';
+              } else if (rarityRatio < 0.3) {
+                rarity = 'Rare';
+              }
+              
+              // Extract village from region or use default
+              const region = (bottle.region || '').toLowerCase();
+              let village = 'lisbon'; // default
+              if (region.includes('porto') || region.includes('douro')) {
+                village = 'porto';
+              } else if (region.includes('paris') || region.includes('france')) {
+                village = 'paris';
+              }
+              
+              return {
+                id: bottle.objectId || `bottle-${index}`,
+                name: bottle.name || 'Unknown Wine',
+                village,
+                vintage: bottle.vintage || new Date().getFullYear(),
+                mintDate: new Date().toISOString().split('T')[0], // Use current date as fallback
+                image: imageUrl || '',
+                imageBlobId,
+                qrCode: bottle.qrCode || '',
+                rarity,
+                tokenId: bottle.objectId || '',
+                attributes: {
+                  vineyard: bottle.winery || 'Unknown Winery',
+                  grapes: bottle.wineType || 'Unknown',
+                  bottles: `${bottleNum}/${totalSupply}`,
+                },
+              };
+            });
+            
+            setNftBottles(transformedBottles);
+          } else {
+            // No data returned - show empty state
+            setNftBottles([]);
+            if (result.error) {
+              setError(result.error);
+            }
+          }
+        } catch (err) {
+          console.error('Error fetching bottles:', err);
+          setError('Failed to load collection');
+        } finally {
+          setLoading(false);
+        }
+      };
 
-    window.addEventListener('purchaseComplete', handlePurchaseComplete);
+      fetchBottles();
 
-    return () => {
-      window.removeEventListener('purchaseComplete', handlePurchaseComplete);
-    };
-  }, [account]);
+      // Listen for purchase completion events to refresh collection
+      const handlePurchaseComplete = () => {
+        // Small delay to allow blockchain state to update
+        setTimeout(() => {
+          fetchBottles();
+        }, 2000);
+      };
+
+      window.addEventListener('purchaseComplete', handlePurchaseComplete);
+
+      return () => {
+        window.removeEventListener('purchaseComplete', handlePurchaseComplete);
+      };
+    }, [account]);
 
   const stats = {
     total: nftBottles.length,
