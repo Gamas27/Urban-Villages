@@ -106,9 +106,9 @@ export function Profile() {
 
   if (!mergedProfile) {
     return (
-      <div className="min-h-screen p-4 pb-24 flex items-center justify-center">
+      <div className="min-h-screen p-4 pb-24 flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <p className="text-gray-600">No profile found. Please complete onboarding.</p>
+          <p className="text-gray-700 text-lg">No profile found. Please complete onboarding.</p>
         </div>
       </div>
     );
@@ -126,7 +126,7 @@ export function Profile() {
   const joinedDate = new Date();
 
   return (
-    <div className="min-h-screen p-4 pb-24">
+    <div className="min-h-screen p-4 pb-24 bg-gray-50">
       {/* Profile Header */}
       <div className="bg-white rounded-2xl overflow-hidden shadow-sm mb-4">
         {/* Cover with village gradient */}
@@ -160,8 +160,8 @@ export function Profile() {
           </div>
 
           {/* User Info */}
-          <h2 className="text-2xl mb-1">{mergedProfile.username}</h2>
-          <p className="text-purple-600 mb-2">@{namespace || 'user'}</p>
+          <h2 className="text-2xl mb-1 text-gray-900 font-semibold">{mergedProfile.username}</h2>
+          <p className="text-purple-600 mb-2 font-medium">@{namespace || 'user'}</p>
           <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
             <Calendar className="w-4 h-4" />
             <span>Joined {formatDate(joinedDate)}</span>
@@ -170,11 +170,11 @@ export function Profile() {
           {/* Follow Stats - Placeholder for future social features */}
           <div className="flex gap-6 mb-4">
             <div>
-              <span className="font-semibold text-lg">0</span>
+              <span className="font-semibold text-lg text-gray-900">0</span>
               <span className="text-gray-600 text-sm ml-1">Following</span>
             </div>
             <div>
-              <span className="font-semibold text-lg">0</span>
+              <span className="font-semibold text-lg text-gray-900">0</span>
               <span className="text-gray-600 text-sm ml-1">Followers</span>
             </div>
           </div>
@@ -183,7 +183,7 @@ export function Profile() {
           {village && (
             <div className="flex items-center gap-2 bg-gray-50 px-4 py-2 rounded-xl inline-flex">
               <span className="text-2xl">{village.emoji}</span>
-              <span className="font-semibold">{village.name} Village</span>
+              <span className="font-semibold text-gray-900">{village.name} Village</span>
             </div>
           )}
         </div>
@@ -215,17 +215,17 @@ export function Profile() {
       {/* Village Stats */}
       {village && (
         <div className="bg-white rounded-2xl p-6 shadow-sm mb-4">
-          <h3 className="text-lg mb-4 flex items-center gap-2">
+          <h3 className="text-lg mb-4 flex items-center gap-2 text-gray-900 font-semibold">
             <Users className="w-5 h-5 text-gray-600" />
             {village.name} Village Stats
           </h3>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="text-2xl">{village.members}</p>
+              <p className="text-2xl text-gray-900 font-semibold">{village.members}</p>
               <p className="text-sm text-gray-600">Active Members</p>
             </div>
             <div>
-              <p className="text-2xl">€{village.treasury.toLocaleString()}</p>
+              <p className="text-2xl text-gray-900 font-semibold">€{village.treasury.toLocaleString()}</p>
               <p className="text-sm text-gray-600">Village Treasury</p>
             </div>
           </div>
@@ -234,25 +234,25 @@ export function Profile() {
 
       {/* Quick Actions */}
       <div className="bg-white rounded-2xl p-6 shadow-sm">
-        <h3 className="text-lg mb-4">Quick Actions</h3>
+        <h3 className="text-lg mb-4 text-gray-900 font-semibold">Quick Actions</h3>
         <div className="space-y-3">
           <Button
             variant="outline"
-            className="w-full justify-between"
+            className="w-full justify-between text-gray-900 hover:text-gray-900"
           >
             <span>View My NFT Bottles</span>
             <ExternalLink className="w-4 h-4" />
           </Button>
           <Button
             variant="outline"
-            className="w-full justify-between"
+            className="w-full justify-between text-gray-900 hover:text-gray-900"
           >
             <span>Transaction History</span>
             <ExternalLink className="w-4 h-4" />
           </Button>
           <Button
             variant="outline"
-            className="w-full justify-between"
+            className="w-full justify-between text-gray-900 hover:text-gray-900"
           >
             <span>Invite Friends</span>
             <Users className="w-4 h-4" />

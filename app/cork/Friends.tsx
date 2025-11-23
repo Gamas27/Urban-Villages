@@ -365,7 +365,7 @@ export function Friends({ village }: FriendsProps) {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between mb-1">
                           <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold truncate">{friend.username}</h3>
+                            <h3 className="font-semibold truncate text-gray-900">{friend.username}</h3>
                             <p className="text-xs text-purple-600">@{friend.namespace}</p>
                           </div>
                           <div className="text-lg ml-2">{friendVillage?.emoji}</div>
@@ -428,7 +428,7 @@ export function Friends({ village }: FriendsProps) {
                 <div className="w-20 h-20 bg-gray-100 rounded-full mx-auto mb-4 flex items-center justify-center">
                   <Search className="w-10 h-10 text-gray-400" />
                 </div>
-                <h3 className="text-lg mb-2">No friends found</h3>
+                <h3 className="text-lg mb-2 text-gray-900">No friends found</h3>
                 <p className="text-sm text-gray-600">Try adjusting your search</p>
               </div>
             )}
@@ -518,7 +518,7 @@ export function Friends({ village }: FriendsProps) {
                 <div className="w-20 h-20 bg-gray-100 rounded-full mx-auto mb-4 flex items-center justify-center">
                   <ArrowRightLeft className="w-10 h-10 text-gray-400" />
                 </div>
-                <h3 className="text-lg mb-2">No transactions yet</h3>
+                <h3 className="text-lg mb-2 text-gray-900">No transactions yet</h3>
                 <p className="text-sm text-gray-600 mb-6">
                   Start sending CORK or gifting bottles to friends
                 </p>
@@ -538,7 +538,7 @@ export function Friends({ village }: FriendsProps) {
           <div className="space-y-4">
             {/* Quick Actions */}
             <div className="bg-white rounded-2xl p-6 shadow-sm space-y-4">
-              <h3 className="font-semibold flex items-center gap-2">
+              <h3 className="font-semibold flex items-center gap-2 text-gray-900">
                 <Send className="w-5 h-5 text-purple-600" />
                 Quick Send
               </h3>
@@ -592,7 +592,7 @@ export function Friends({ village }: FriendsProps) {
 
             {/* Recent Recipients */}
             <div className="bg-white rounded-2xl p-6 shadow-sm">
-              <h3 className="font-semibold mb-4">Recent Recipients</h3>
+              <h3 className="font-semibold mb-4 text-gray-900">Recent Recipients</h3>
               <div className="space-y-3">
                 {friends.slice(0, 3).map((friend) => {
                   const friendVillage = getVillageById(friend.village);
@@ -648,7 +648,7 @@ export function Friends({ village }: FriendsProps) {
             <div className="sticky top-0 bg-white border-b border-gray-100 p-6 pb-4">
               <div className="flex items-start justify-between mb-3">
                 <div>
-                  <h2 className="text-xl font-semibold mb-1">
+                  <h2 className="text-xl font-semibold mb-1 text-gray-900">
                     {sendType === 'tokens' ? 'Send CORK Tokens' : 'Gift Bottle'}
                   </h2>
                   <p className="text-sm text-gray-600">

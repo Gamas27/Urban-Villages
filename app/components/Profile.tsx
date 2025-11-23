@@ -37,27 +37,27 @@ export function Profile({ user }: ProfileProps) {
             </Avatar>
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
-                <h2 className="text-2xl font-semibold">@{user.username}.{user.village}</h2>
+                <h2 className="text-2xl font-semibold text-gray-900">@{user.username}.{user.village}</h2>
                 <Badge variant="outline">{user.village}</Badge>
               </div>
-              <div className="flex items-center gap-2 text-sm opacity-60 mb-4">
+              <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
                 <ImageIcon className="w-4 h-4" />
                 <span>Profile stored on Walrus</span>
               </div>
               <div className="flex items-center gap-4">
                 <div>
-                  <p className="text-2xl font-semibold">{user.corkBalance}</p>
-                  <p className="text-sm opacity-60">CORK</p>
+                  <p className="text-2xl font-semibold text-gray-900">{user.corkBalance}</p>
+                  <p className="text-sm text-gray-600">CORK</p>
                 </div>
                 <div className="h-8 w-px bg-gray-200" />
                 <div>
-                  <p className="text-2xl font-semibold">1</p>
-                  <p className="text-sm opacity-60">NFTs Owned</p>
+                  <p className="text-2xl font-semibold text-gray-900">1</p>
+                  <p className="text-sm text-gray-600">NFTs Owned</p>
                 </div>
                 <div className="h-8 w-px bg-gray-200" />
                 <div>
-                  <p className="text-2xl font-semibold">5</p>
-                  <p className="text-sm opacity-60">Friends Invited</p>
+                  <p className="text-2xl font-semibold text-gray-900">5</p>
+                  <p className="text-sm text-gray-600">Friends Invited</p>
                 </div>
               </div>
             </div>
@@ -85,8 +85,8 @@ export function Profile({ user }: ProfileProps) {
                       className="w-24 h-24 object-cover rounded-lg"
                     />
                     <div className="flex-1">
-                      <h4 className="font-semibold mb-1">{nft.name}</h4>
-                      <p className="text-sm opacity-70 mb-2">Bottle #{nft.bottle}</p>
+                      <h4 className="font-semibold mb-1 text-gray-900">{nft.name}</h4>
+                      <p className="text-sm text-gray-600 mb-2">Bottle #{nft.bottle}</p>
                       <div className="flex items-center gap-2">
                         <Badge variant="outline" className="text-xs">
                           SUI NFT
@@ -95,14 +95,14 @@ export function Profile({ user }: ProfileProps) {
                           Walrus Images
                         </Badge>
                       </div>
-                      <p className="text-xs opacity-60 mt-2">Acquired {nft.acquired}</p>
+                      <p className="text-xs text-gray-500 mt-2">Acquired {nft.acquired}</p>
                     </div>
                     <div className="flex flex-col gap-2">
-                      <Button size="sm" variant="outline" className="gap-2">
+                      <Button size="sm" variant="outline" className="gap-2 text-gray-900 hover:text-gray-900">
                         <QrCode className="w-4 h-4" />
                         QR
                       </Button>
-                      <Button size="sm" variant="outline" className="gap-2">
+                      <Button size="sm" variant="outline" className="gap-2 text-gray-900 hover:text-gray-900">
                         <ExternalLink className="w-4 h-4" />
                         View
                       </Button>
@@ -116,8 +116,8 @@ export function Profile({ user }: ProfileProps) {
 
         <TabsContent value="activity">
           <Card>
-            <CardContent className="p-8 text-center opacity-60">
-              <p>Activity history coming soon</p>
+            <CardContent className="p-8 text-center">
+              <p className="text-gray-600">Activity history coming soon</p>
             </CardContent>
           </Card>
         </TabsContent>
@@ -133,19 +133,19 @@ export function Profile({ user }: ProfileProps) {
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="opacity-70">Welcome Bonus</span>
-                  <span className="font-semibold">+100 CORK</span>
+                  <span className="text-gray-700">Welcome Bonus</span>
+                  <span className="font-semibold text-gray-900">+100 CORK</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="opacity-70">Bottle Purchase</span>
-                  <span className="font-semibold">+100 CORK</span>
+                  <span className="text-gray-700">Bottle Purchase</span>
+                  <span className="font-semibold text-gray-900">+100 CORK</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="opacity-70">Referral Rewards (5)</span>
-                  <span className="font-semibold">+250 CORK</span>
+                  <span className="text-gray-700">Referral Rewards (5)</span>
+                  <span className="font-semibold text-gray-900">+250 CORK</span>
                 </div>
-                <div className="border-t pt-3 flex items-center justify-between">
-                  <span className="font-semibold">Total Balance</span>
+                <div className="border-t border-amber-200 pt-3 flex items-center justify-between">
+                  <span className="font-semibold text-gray-900">Total Balance</span>
                   <span className="text-xl font-semibold text-amber-600">{user.corkBalance} CORK</span>
                 </div>
               </CardContent>
@@ -153,13 +153,13 @@ export function Profile({ user }: ProfileProps) {
 
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="w-5 h-5" />
+                <CardTitle className="flex items-center gap-2 text-gray-900">
+                  <Users className="w-5 h-5 text-gray-600" />
                   Referral Program
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm opacity-70 mb-3">
+                <p className="text-sm text-gray-600 mb-3">
                   You've invited 5 friends and earned 250 CORK!
                 </p>
                 <Button className="w-full">
