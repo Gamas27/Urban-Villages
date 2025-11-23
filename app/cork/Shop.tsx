@@ -84,7 +84,7 @@ export function Shop({ village }: ShopProps) {
           wine: {
             id: '1',
             name: '2023 Orange Skin Contact',
-            vintage: 2023,
+            vintage: '2023',
             vineyard: 'Quinta do Terroir',
             price: 28,
             corkReward: 280,
@@ -113,7 +113,7 @@ export function Shop({ village }: ShopProps) {
           wine: {
             id: '2',
             name: '2022 Natural Red Blend',
-            vintage: 2022,
+            vintage: '2022',
             vineyard: 'Vinha Velha',
             price: 32,
             corkReward: 320,
@@ -142,7 +142,7 @@ export function Shop({ village }: ShopProps) {
           wine: {
             id: '3',
             name: '2021 Amphora Orange',
-            vintage: 2021,
+            vintage: '2021',
             vineyard: 'Casa Ferreirinha',
             price: 45,
             corkReward: 450,

@@ -71,7 +71,7 @@ export function initEnoki(config?: Partial<EnokiConfig>): void {
             clientId: finalConfig.googleClientId,
           },
         }
-      : undefined;
+      : {};
 
     console.log('🔧 Enoki config:', {
       network: finalConfig.network,
@@ -89,7 +89,7 @@ export function initEnoki(config?: Partial<EnokiConfig>): void {
       client: suiClient,
       network: finalConfig.network,
       apiKey: finalConfig.apiKey,
-      providers,
+      providers: providers as Partial<Record<string, { clientId: string }>>,
     });
 
     enokiInitialized = true;

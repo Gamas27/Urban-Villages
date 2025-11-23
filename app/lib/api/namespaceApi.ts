@@ -32,18 +32,20 @@ export async function checkNamespace(
 }
 
 /**
- * Register namespace on-chain
+ * Register namespace on-chain (using sponsored transactions)
  * 
  * @param username - Username
  * @param village - Village ID
  * @param profilePicBlobId - Optional profile picture blob ID
- * @param signAndExecute - Transaction signing function
+ * @param executeSponsoredTransaction - Sponsored transaction executor function
+ * @param sender - Sender wallet address
  */
 export async function registerNamespace(
   username: string,
   village: string,
   profilePicBlobId: string | undefined,
-  signAndExecute: (params: { transaction: Transaction }) => Promise<{ digest: string }>
+  executeSponsoredTransaction: (transaction: Transaction, sender: string) => Promise<{ digest: string }>,
+  sender: string
 ): Promise<ApiResponse<string>> {
   try {
     // Validate inputs
@@ -87,7 +89,8 @@ export async function registerNamespace(
           username,
           village,
           profilePicBlobId,
-          signAndExecute
+          executeSponsoredTransaction,
+          sender
         );
         
         return createSuccessResponse(digest);

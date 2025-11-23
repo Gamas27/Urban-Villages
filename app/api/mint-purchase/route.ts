@@ -134,11 +134,11 @@ export async function POST(req: NextRequest) {
 
     // Build, sign and execute transaction
     const txBytes = await tx.build({ client: suiClient });
-    const signature = keypair.signTransactionBlock(txBytes);
+    const signedTransaction = await keypair.signTransaction(txBytes);
     
     const result = await suiClient.executeTransactionBlock({
-      transactionBlock: txBytes,
-      signature,
+      transactionBlock: signedTransaction.bytes,
+      signature: signedTransaction.signature,
       options: {
         showEffects: true,
         showEvents: true,
@@ -168,6 +168,35 @@ export async function POST(req: NextRequest) {
         const data = bottleEvent.parsedJson as any;
         nftId = data.bottle_id || null;
       }
+    }
+
+    // Log transaction to backend (non-blocking)
+    try {
+      const logResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/users/transactions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          walletAddress: recipient,
+          transactionType: 'purchase',
+          transactionDigest: result.digest,
+          nftId: nftId || undefined,
+          tokenAmount: corkAmount || 50,
+          metadata: {
+            wineName,
+            vintage,
+            region,
+            winery,
+            wineType,
+            bottleNumber,
+            totalSupply,
+          },
+        }),
+      }).catch((err) => {
+        console.error('[mint-purchase] Failed to log transaction:', err);
+      });
+    } catch (logError) {
+      // Don't fail the purchase if logging fails
+      console.error('[mint-purchase] Transaction logging error:', logError);
     }
 
     return NextResponse.json({

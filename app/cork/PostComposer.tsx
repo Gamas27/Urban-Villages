@@ -3,10 +3,11 @@
 import { useState } from 'react';
 import { X, Image as ImageIcon, Sparkles, Loader2 } from 'lucide-react';
 import { useEnokiWalrusUpload } from '@/lib/hooks/useEnokiWalrusUpload';
+import { usePostUpload } from '@/lib/hooks/usePostUpload';
 import { useCurrentAccount } from '@mysten/dapp-kit';
 import { getVillageById } from './data/villages';
 import { Button } from '@/components/ui/button';
-import { savePost } from './lib/postStorage';
+import { createPost } from '@/lib/api/postsApi';
 import { WalrusImage } from '@/components/WalrusImage';
 import { useUserProfile, useUserNamespace, useUserVillage } from '@/lib/stores/userStore';
 
@@ -17,12 +18,14 @@ interface PostComposerProps {
 
 export function PostComposer({ onClose, onPost }: PostComposerProps) {
   const account = useCurrentAccount();
-  const { uploadFile, uploading: walrusUploading, error: walrusError } = useEnokiWalrusUpload();
+  const { uploadFile, uploading: imageUploading, error: walrusError } = useEnokiWalrusUpload();
+  const { uploadPost, uploading: postUploading, error: postError } = usePostUpload();
   const profile = useUserProfile();
   const namespace = useUserNamespace();
   const userVillage = useUserVillage();
   
   const [text, setText] = useState('');
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
   const [imageBlobId, setImageBlobId] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [posting, setPosting] = useState(false);
@@ -33,82 +36,131 @@ export function PostComposer({ onClose, onPost }: PostComposerProps) {
 
   const village = getVillageById(villageId);
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Check if wallet is connected (Enoki or regular)
-    if (!account) {
-      console.warn('Please connect a wallet first.');
-      // Show preview anyway
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreviewUrl(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-      return;
-    }
+    // Store the file for later upload (only when posting)
+    setSelectedImageFile(file);
 
-    // Show preview immediately
+    // Show preview immediately (no upload yet)
     const reader = new FileReader();
     reader.onloadend = () => {
       setPreviewUrl(reader.result as string);
     };
     reader.readAsDataURL(file);
-
-    // Upload to Walrus using Enoki wallet (via dapp-kit)
-    const result = await uploadFile(file);
-    if (result) {
-      setImageBlobId(result.blobId);
-    } else {
-      console.error('Walrus upload failed:', walrusError);
-    }
   };
 
   const handleRemoveImage = () => {
+    setSelectedImageFile(null);
     setImageBlobId(null);
     setPreviewUrl(null);
   };
 
   const handlePost = async () => {
-    if (!text.trim() && !imageBlobId) return;
+    if (!text.trim() && !selectedImageFile) return;
     if (!account || !profile || !namespace || !villageId) {
       console.error('User data incomplete for posting.');
+      return;
+    }
+
+    // Check if wallet is needed for image upload
+    if (selectedImageFile && !account) {
+      alert('Please connect a wallet to post images.');
       return;
     }
 
     setPosting(true);
     
     try {
-      // Save post with Walrus blobId
-      const post = savePost({
-        author: username,
+      let finalImageBlobId = imageBlobId;
+
+      // Step 1: Upload image to Walrus (only if image selected and not already uploaded)
+      if (selectedImageFile && !imageBlobId) {
+        if (!account) {
+          throw new Error('Wallet required for image upload');
+        }
+
+        const uploadResult = await uploadFile(selectedImageFile);
+        if (!uploadResult) {
+          throw new Error('Failed to upload image to Walrus');
+        }
+        finalImageBlobId = uploadResult.blobId;
+        setImageBlobId(uploadResult.blobId);
+      }
+
+      // Calculate CORK earned
+      let corkEarned = 10;
+      if (text.trim().length > 100) corkEarned = 20;
+      else if (text.trim().length > 50) corkEarned = 15;
+      if (finalImageBlobId) corkEarned += 5;
+
+      // Step 2: Upload post content to Walrus
+      const postContent = {
         namespace: userNamespace,
         village: villageId,
         text: text.trim(),
-        imageBlobId: imageBlobId || undefined,
+        imageBlobId: finalImageBlobId || undefined,
+        type: 'regular' as const,
+        corkEarned,
+        likes: 0,
+        comments: 0,
+        author: username,
+        profilePicBlobId: profile?.profilePicBlobId || undefined,
+      };
+
+      const walrusResult = await uploadPost(postContent);
+      if (!walrusResult) {
+        throw new Error('Failed to upload post to Walrus');
+      }
+
+      console.log('Post uploaded to Walrus:', walrusResult.blobId);
+
+      // Step 3: Save post index to backend API (includes Walrus blobId)
+      const post = await createPost({
+        walletAddress: account.address,
+        namespace: userNamespace,
+        village: villageId,
+        text: text.trim(),
+        imageBlobId: finalImageBlobId || undefined,
+        walrusBlobId: walrusResult.blobId, // Store Walrus blob ID
         type: 'regular',
       });
 
-      console.log('Post saved:', post);
+      if (!post) {
+        throw new Error('Failed to create post index');
+      }
+
+      console.log('Post index saved to backend:', post);
+
+      // Trigger event to refresh feed
+      window.dispatchEvent(new Event('postCreated'));
 
       // TODO: Create post transaction on SUI blockchain
       // Include text and imageBlobId in transaction
       // await createPostTransaction(post);
       
-      // Simulate transaction delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Clear form
+      setText('');
+      setSelectedImageFile(null);
+      setImageBlobId(null);
+      setPreviewUrl(null);
+      
+      // Close composer
+      onPost();
     } catch (error) {
       console.error('Error posting:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to post. Please try again.';
+      alert(errorMessage);
     } finally {
       setPosting(false);
-      onPost();
     }
   };
 
   const estimatedCork = text.length > 100 ? 20 : text.length > 50 ? 15 : 10;
-  const hasImage = imageBlobId || previewUrl;
-  const canPost = (text.trim().length > 0 || hasImage) && !walrusUploading && !posting;
+  const hasImage = selectedImageFile || previewUrl;
+  const canPost = (text.trim().length > 0 || hasImage) && !posting && !imageUploading && !postUploading;
+  const isUploading = (imageUploading || postUploading) && posting; // Show upload state during posting
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-end md:items-center justify-center">
@@ -128,10 +180,10 @@ export function PostComposer({ onClose, onPost }: PostComposerProps) {
             disabled={!canPost}
             className="bg-gradient-to-r from-orange-500 to-purple-600 hover:from-orange-600 hover:to-purple-700 disabled:opacity-50"
           >
-            {posting ? (
+              {posting ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Posting...
+                {imageUploading ? 'Uploading image...' : postUploading ? 'Uploading post...' : 'Posting...'}
               </>
             ) : (
               'Post'
@@ -196,15 +248,15 @@ export function PostComposer({ onClose, onPost }: PostComposerProps) {
                 alt="Upload preview"
                 className="w-full rounded-xl"
               />
-              {walrusUploading && (
+              {isUploading && (
                 <div className="absolute inset-0 bg-black bg-opacity-50 flex flex-col items-center justify-center">
                   <Loader2 className="w-8 h-8 text-white animate-spin mb-2" />
                   <p className="text-white text-sm">Uploading to Walrus...</p>
                 </div>
               )}
-              {imageBlobId && (
+              {imageBlobId && !isUploading && (
                 <div className="absolute top-3 left-3 bg-green-500 text-white px-3 py-1 rounded-full text-sm flex items-center gap-1">
-                  ✓ Stored on Walrus
+                  ✓ Ready to post
                 </div>
               )}
               {!posting && (
@@ -218,28 +270,30 @@ export function PostComposer({ onClose, onPost }: PostComposerProps) {
             </div>
           )}
 
-          {walrusError && (
+          {(walrusError || postError) && (
             <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-sm">
-              Upload failed: {walrusError}
+              Upload failed: {walrusError || postError}
             </div>
           )}
 
-          {!account && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 text-sm">
-              <p className="text-blue-800 text-center">
-                <strong>Please connect a wallet to upload images</strong>
+          {selectedImageFile && !account && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4 text-sm">
+              <p className="text-yellow-800 text-center">
+                <strong>⚠️ Connect wallet to post with image</strong>
+                <br />
+                <span className="text-xs">You can preview the image, but need a wallet to upload it.</span>
               </p>
             </div>
           )}
 
           {/* Actions */}
           <div className="flex items-center gap-4 pt-4 border-t border-gray-200">
-            <label className={`flex items-center gap-2 text-purple-600 hover:bg-purple-50 px-4 py-2 rounded-lg cursor-pointer transition-colors ${!account ? 'opacity-50 cursor-not-allowed' : ''}`}>
+            <label className={`flex items-center gap-2 text-purple-600 hover:bg-purple-50 px-4 py-2 rounded-lg cursor-pointer transition-colors ${posting ? 'opacity-50 cursor-not-allowed' : ''}`}>
               <input
                 type="file"
                 accept="image/*"
-                onChange={handleImageUpload}
-                disabled={walrusUploading || posting || !!hasImage || !account}
+                onChange={handleImageSelect}
+                disabled={posting || !!hasImage}
                 className="hidden"
               />
               <ImageIcon className="w-5 h-5" />

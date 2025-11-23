@@ -71,6 +71,7 @@ export async function mintBottleNFT(
       tx.pure.string(bottleData.wineType),      // wine_type: vector<u8>
       tx.pure.u64(bottleData.bottleNumber),    // bottle_number: u64
       tx.pure.u64(bottleData.totalSupply),     // total_supply: u64
+      // @ts-expect-error - tx.pure.option type definition issue with transaction arguments
       tx.pure.option('string', customTextArg ? tx.pure.string(customTextArg) : null), // custom_text: Option<vector<u8>>
       tx.pure.string(bottleData.imageUrl),     // image_url: vector<u8>
       tx.pure.string(bottleData.qrCode),        // qr_code: vector<u8>

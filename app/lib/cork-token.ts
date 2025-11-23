@@ -6,7 +6,6 @@
 
 import { Transaction } from '@mysten/sui/transactions';
 import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
-import { Coin } from '@mysten/sui/coin';
 
 const CORK_TOKEN_PACKAGE_ID = process.env.NEXT_PUBLIC_CORK_TOKEN_PACKAGE_ID || '0x0';
 const CORK_TREASURY_ID = process.env.NEXT_PUBLIC_CORK_TREASURY_ID || '0x0';

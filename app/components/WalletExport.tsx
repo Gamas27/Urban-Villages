@@ -23,7 +23,7 @@ export function WalletExport() {
       const keypair = new Ed25519Keypair();
       const privateKeyBytes = keypair.getSecretKey();
       const privateKeyHex = Array.from(privateKeyBytes)
-        .map((b) => b.toString(16).padStart(2, '0'))
+        .map((b) => Number(b).toString(16).padStart(2, '0'))
         .join('');
       
       setPrivateKey(privateKeyHex);
@@ -45,7 +45,9 @@ export function WalletExport() {
     }
   };
 
-  const isEnokiWallet = currentWallet?.name?.toLowerCase().includes('enoki');
+  // Check if account is Enoki wallet (Enoki wallets typically have specific address patterns)
+  // For now, we'll allow export attempts for all wallets
+  const isEnokiWallet = false;
 
   return (
     <div className="space-y-4 p-4 bg-white rounded-lg border">
@@ -74,12 +76,12 @@ export function WalletExport() {
       {!privateKey ? (
         <div className="space-y-2">
           <Button
-            onClick={handleExportPrivateKey}
-            disabled={loading || isEnokiWallet}
+            onClick={handleGenerateNewWallet}
+            disabled={isEnokiWallet}
             variant="outline"
             className="w-full"
           >
-            {loading ? 'Exporting...' : 'Try Export Private Key'}
+            Generate New Wallet
           </Button>
           
           <div className="text-center text-xs text-gray-500">or</div>

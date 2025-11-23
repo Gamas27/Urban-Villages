@@ -73,19 +73,21 @@ export async function checkNamespaceAvailability(
 }
 
 /**
- * Register a namespace on-chain
+ * Register a namespace on-chain (using sponsored transactions)
  * 
  * @param username - Username (alphanumeric, lowercase)
  * @param village - Village ID (e.g., 'lisbon', 'porto')
  * @param profilePicBlobId - Walrus blob ID for profile picture (optional)
- * @param signAndExecute - Transaction signing function from dapp-kit
+ * @param executeSponsoredTransaction - Sponsored transaction executor function
+ * @param sender - Sender wallet address
  * @returns Transaction digest
  */
 export async function registerNamespace(
   username: string,
   village: string,
   profilePicBlobId: string | undefined,
-  signAndExecute: (params: { transaction: Transaction }) => Promise<{ digest: string }>
+  executeSponsoredTransaction: (transaction: Transaction, sender: string) => Promise<{ digest: string }>,
+  sender: string
 ): Promise<string> {
   // Validate inputs
   if (!username || !village) {
@@ -136,8 +138,8 @@ export async function registerNamespace(
     ],
   });
 
-  // Sign and execute transaction using Enoki wallet (via dapp-kit)
-  const result = await signAndExecute({ transaction: tx });
+  // Execute sponsored transaction (gas paid by Enoki Gas Pool)
+  const result = await executeSponsoredTransaction(tx, sender);
   return result.digest;
 }
 
@@ -216,12 +218,11 @@ export async function getNamespaceMetadata(namespace: string): Promise<{
 
 /**
  * React hook for namespace registration
- * Uses Enoki wallet via dapp-kit
+ * Uses Enoki sponsored transactions via useSponsoredTransaction hook
  */
 export function useNamespaceRegistration() {
-  // This would typically be a custom hook that uses useSignAndExecuteTransaction
-  // For now, it's exported as a utility function
-  // Components can call registerNamespace directly with signAndExecute from dapp-kit
+  // Components should use useSponsoredTransaction hook and pass executeSponsoredTransaction
+  // to registerNamespace along with the sender address
   return {
     registerNamespace,
     checkNamespaceAvailability,

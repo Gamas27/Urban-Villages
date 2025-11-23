@@ -6,6 +6,7 @@ import { type Wine } from './data/mockData';
 import { Button } from '@/components/ui/button';
 import { useCurrentAccount } from '@mysten/dapp-kit';
 import { bottleApi } from '@/lib/api';
+import { useBlockchainStore } from '@/lib/stores/blockchainStore';
 
 interface PurchaseModalProps {
   wine: Wine;
@@ -15,10 +16,12 @@ interface PurchaseModalProps {
 
 export function PurchaseModal({ wine, onClose, onSuccess }: PurchaseModalProps) {
   const account = useCurrentAccount();
+  const { addTransaction, updateTransaction, refreshAll } = useBlockchainStore();
   const [step, setStep] = useState<'confirm' | 'minting' | 'success'>('confirm');
   const [txHash, setTxHash] = useState<string | null>(null);
   const [nftId, setNftId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [txId, setTxId] = useState<string | null>(null);
 
   const handlePurchase = async () => {
     if (!account) {
@@ -30,6 +33,18 @@ export function PurchaseModal({ wine, onClose, onSuccess }: PurchaseModalProps) 
     setError(null);
 
     try {
+      // Track transaction in blockchain store (pending)
+      const transactionId = addTransaction({
+        type: 'purchase',
+        status: 'pending',
+        metadata: {
+          wineName: wine.name,
+          vintage: wine.vintage,
+          village: wine.village,
+        },
+      });
+      setTxId(transactionId);
+
       // Generate QR code (for demo, use timestamp-based)
       const qrCode = `QR-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
@@ -51,12 +66,41 @@ export function PurchaseModal({ wine, onClose, onSuccess }: PurchaseModalProps) 
       });
 
       if (!result.success || !result.data) {
+        // Update transaction to failed
+        if (transactionId) {
+          updateTransaction(transactionId, {
+            status: 'failed',
+            error: result.error || 'Failed to complete purchase',
+          });
+        }
         throw new Error(result.error || 'Failed to complete purchase');
       }
 
+      // Update transaction to success
+      if (transactionId) {
+        updateTransaction(transactionId, {
+          status: 'success',
+          digest: result.data.digest,
+          metadata: {
+            wineName: wine.name,
+            vintage: wine.vintage,
+            village: wine.village,
+            nftId: result.data.nftId,
+            corkAmount: wine.corkReward || 50,
+          },
+        });
+      }
+
       setTxHash(result.data.digest);
-      setNftId(data.nftId);
+      setNftId(result.data.nftId || null);
       setStep('success');
+
+      // Refresh blockchain state (balance + NFTs)
+      if (account?.address) {
+        refreshAll(account.address).catch((err) => {
+          console.error('Failed to refresh blockchain state:', err);
+        });
+      }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to complete purchase';
       setError(errorMsg);

@@ -10,14 +10,22 @@ import { Friends } from './Friends';
 import { PostComposer } from './PostComposer';
 import { VillageSwitch } from './VillageSwitch';
 import { getVillageById } from './data/villages';
+import { useEffect } from 'react';
+import { useCurrentAccount } from '@mysten/dapp-kit';
 import { useUserProfile, useUserNamespace, useUserVillage } from '@/lib/stores/userStore';
+import { useBlockchainStore, useBackendStore } from '@/lib/stores';
 
 type Tab = 'feed' | 'shop' | 'friends' | 'collection' | 'post' | 'profile';
 
 export function MainApp() {
+  const account = useCurrentAccount();
   const profile = useUserProfile();
   const namespace = useUserNamespace();
   const userVillage = useUserVillage();
+  
+  // Get stores for blockchain and backend sync
+  const { refreshAll } = useBlockchainStore();
+  const { fetchBackendProfile } = useBackendStore();
   
   const [activeTab, setActiveTab] = useState<Tab>('feed');
   const [showVillageSwitch, setShowVillageSwitch] = useState(false);
@@ -25,6 +33,21 @@ export function MainApp() {
   const [currentVillage, setCurrentVillage] = useState(userVillage || 'lisbon');
 
   const village = getVillageById(currentVillage);
+
+  // Load blockchain state and backend profile on mount
+  useEffect(() => {
+    if (!account?.address) return;
+
+    // Fetch blockchain state (CORK balance, NFTs)
+    refreshAll(account.address).catch((err) => {
+      console.error('Failed to refresh blockchain state:', err);
+    });
+
+    // Fetch backend profile
+    fetchBackendProfile(account.address).catch((err) => {
+      console.error('Failed to fetch backend profile:', err);
+    });
+  }, [account?.address, refreshAll, fetchBackendProfile]);
 
   // Mock notification counts
   const notifications = {

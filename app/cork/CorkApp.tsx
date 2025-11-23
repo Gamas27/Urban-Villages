@@ -3,15 +3,21 @@
 import { useEffect } from 'react';
 import { Onboarding } from './Onboarding';
 import { MainApp } from './MainApp';
-import { useCurrentAccount, useSignAndExecuteTransaction } from '@mysten/dapp-kit';
+import { useCurrentAccount } from '@mysten/dapp-kit';
+import { useSponsoredTransaction } from '@/lib/hooks/useSponsoredTransaction';
 import { useUserStore, useUserProfile } from '@/lib/stores/userStore';
+import { useBackendStore } from '@/lib/stores/backendStore';
+import { useBlockchainStore } from '@/lib/stores/blockchainStore';
 import { namespaceApi } from '@/lib/api';
+import { saveUserProfile, trackOnboardingEvent, logTransaction } from '@/lib/api/userTracking';
 
 export default function CorkApp() {
   const account = useCurrentAccount();
-  const { mutateAsync: signAndExecute } = useSignAndExecuteTransaction();
+  const { executeSponsoredTransaction } = useSponsoredTransaction();
   const profile = useUserProfile();
   const { setProfile, updateProfile, setLoading, setError, loading, error: registrationError } = useUserStore();
+  const { syncProfile } = useBackendStore();
+  const { addTransaction, updateTransaction } = useBlockchainStore();
 
   // Check if user is onboarded (has profile and wallet connected)
   const isOnboarded = profile !== null && account !== null;
@@ -48,19 +54,90 @@ export default function CorkApp() {
           data.username,
           data.village,
           data.profilePicBlobId,
-          signAndExecute
+          executeSponsoredTransaction,
+          account.address
         );
         
         if (result.success && result.data) {
+          // result.data is a string (digest) from registerNamespace
+          const digest = result.data;
+          
+          // Track namespace registration transaction
+          const txId = addTransaction({
+            type: 'namespace_claim',
+            status: 'pending',
+            digest: digest,
+            metadata: { 
+              namespace: `${data.username}.${data.village}`,
+              namespaceId: digest, // Use digest as namespaceId for now
+            },
+          });
+
           // Update profile with namespace ID
-          setProfile({
+          const updatedProfile = {
             username: data.username,
             village: data.village,
             profilePicBlobId: data.profilePicBlobId,
-            namespaceId: result.data,
+            namespaceId: digest, // Use digest as namespaceId
             walletAddress: account.address,
+          };
+          
+          setProfile(updatedProfile);
+          console.log('Namespace registered:', digest);
+
+          // Update transaction on success
+          updateTransaction(txId, {
+            status: 'success',
+            digest: digest,
           });
-          console.log('Namespace registered:', result.data);
+
+          // Sync to backend (after blockchain confirmation)
+          try {
+            await saveUserProfile({
+              walletAddress: account.address,
+              username: data.username,
+              village: data.village,
+              namespaceId: digest, // Use digest as namespaceId
+              profilePicBlobId: data.profilePicBlobId,
+              onboardingCompleted: true,
+            });
+
+            // Track completion event
+            await trackOnboardingEvent(account.address, 'completed', {
+              village: data.village,
+              username: data.username,
+              step: 5,
+            });
+
+            // Log namespace transaction to backend
+            await logTransaction({
+              walletAddress: account.address,
+              transactionType: 'namespace_claim',
+              transactionDigest: digest,
+              metadata: {
+                namespace: `${data.username}.${data.village}`,
+                namespaceId: digest, // Use digest as namespaceId
+              },
+            }).catch((err) => {
+              console.error('Failed to log namespace transaction:', err);
+            });
+
+            // Also sync via backend store
+            await syncProfile({
+              walletAddress: account.address,
+              username: data.username,
+              village: data.village,
+              namespaceId: digest, // Use digest as namespaceId
+              profilePicBlobId: data.profilePicBlobId,
+              onboardingCompletedAt: new Date().toISOString(),
+            }).catch((err) => {
+              console.error('Failed to sync profile to backend:', err);
+            });
+
+          } catch (backendError) {
+            console.error('Backend sync failed (non-critical):', backendError);
+            // Don't fail onboarding if backend sync fails
+          }
         } else {
           setError(result.error || 'Failed to register namespace');
           console.error('Namespace registration failed:', result.error);

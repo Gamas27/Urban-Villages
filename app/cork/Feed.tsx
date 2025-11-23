@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Heart, MessageCircle, Sparkles, Gift, Send, ShoppingBag, ArrowRight } from 'lucide-react';
 import { type Post } from './data/mockData';
 import { getVillageById } from './data/villages';
-import { getPosts } from './lib/postStorage';
+import { getPosts as getPostsFromAPI } from '@/lib/api/postsApi';
 import { WalrusImage } from '@/components/WalrusImage';
 
 interface FeedProps {
@@ -16,45 +16,74 @@ type FeedTab = 'village' | 'following' | 'all';
 export function Feed({ village }: FeedProps) {
   const [activeTab, setActiveTab] = useState<FeedTab>('village');
   const [posts, setPosts] = useState<Post[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const currentVillage = getVillageById(village);
 
-  // Load posts from storage (real posts only)
+  // Load posts from backend API
   useEffect(() => {
-    const storedPosts = getPosts();
-    // Sort by timestamp (newest first)
-    storedPosts.sort((a, b) => b.timestamp - a.timestamp);
-    setPosts(storedPosts);
-  }, []);
-
-  // Listen for new posts (from PostComposer)
-  useEffect(() => {
-    const refreshPosts = () => {
-      const storedPosts = getPosts();
-      storedPosts.sort((a, b) => b.timestamp - a.timestamp);
-      setPosts(storedPosts);
+    const loadPosts = async () => {
+      setLoading(true);
+      try {
+        // Determine village filter based on active tab
+        const villageFilter = activeTab === 'village' ? village : undefined;
+        
+        const result = await getPostsFromAPI({
+          village: villageFilter,
+          limit: 50,
+        });
+        
+        // Transform API posts to match Post interface
+        const transformedPosts: Post[] = result.data.map((post) => ({
+          id: post.id,
+          author: post.author || post.namespace?.split('.')[0] || 'user',
+          namespace: post.namespace,
+          village: post.village,
+          text: post.text,
+          imageBlobId: post.imageBlobId || undefined,
+          imageUrl: post.imageUrl || undefined,
+          timestamp: post.timestamp,
+          corkEarned: post.corkEarned || 0,
+          likes: post.likes || 0,
+          comments: post.comments || 0,
+          type: (post.type as any) || 'regular',
+          activityData: post.activityData || undefined,
+        }));
+        
+        setPosts(transformedPosts);
+      } catch (error) {
+        console.error('Error loading posts:', error);
+        setPosts([]);
+      } finally {
+        setLoading(false);
+      }
     };
 
-    const handleStorageChange = () => refreshPosts();
-    const handlePostCreated = () => refreshPosts();
+    loadPosts();
 
-    window.addEventListener('storage', handleStorageChange);
+    // Refresh posts periodically (every 10 seconds)
+    const interval = setInterval(() => {
+      loadPosts();
+    }, 10000); // Refresh every 10 seconds
+
+    // Listen for new posts (custom event from PostComposer)
+    const handlePostCreated = () => {
+      loadPosts();
+    };
+
     window.addEventListener('postCreated', handlePostCreated);
-    // Also check on focus (for same-tab updates)
-    window.addEventListener('focus', handleStorageChange);
 
     return () => {
-      window.removeEventListener('storage', handleStorageChange);
+      clearInterval(interval);
       window.removeEventListener('postCreated', handlePostCreated);
-      window.removeEventListener('focus', handleStorageChange);
     };
-  }, []);
+  }, [activeTab, village]);
   
-  const filteredPosts = posts.filter(post => {
-    if (activeTab === 'village') return post.village === village;
-    if (activeTab === 'following') return true; // TODO: filter by following
-    return true; // all posts
-  });
+  // Posts are already filtered by the API based on activeTab
+  // For 'following' tab, we'd need to implement following logic
+  const filteredPosts = activeTab === 'following' 
+    ? [] // TODO: Implement following filter
+    : posts;
 
   const formatTimeAgo = (timestamp: number) => {
     const seconds = Math.floor((Date.now() - timestamp) / 1000);
@@ -130,7 +159,13 @@ export function Feed({ village }: FeedProps) {
 
       {/* Posts */}
       <div className="p-4 space-y-4">
-        {filteredPosts.map((post) => {
+        {loading && (
+          <div className="text-center py-12">
+            <p className="text-gray-500">Loading posts...</p>
+          </div>
+        )}
+        
+        {!loading && filteredPosts.map((post) => {
           const postVillage = getVillageById(post.village);
           const activityBadge = post.type ? getActivityBadge(post.type) : null;
           const isActivityPost = post.type && post.type !== 'regular';
