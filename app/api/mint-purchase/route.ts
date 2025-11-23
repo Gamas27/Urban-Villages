@@ -3,9 +3,9 @@ import { Transaction } from '@mysten/sui/transactions';
 import { SuiClient, getFullnodeUrl } from '@mysten/sui/client';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { Secp256k1Keypair } from '@mysten/sui/keypairs/secp256k1';
-import { fromB64, toB64 } from '@mysten/sui/utils';
+import { fromB64 } from '@mysten/sui/utils';
 import type { Keypair } from '@mysten/sui/cryptography';
-import { bech32 } from 'bech32';
+import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
 
 /**
  * API Route for Minting Bottle NFT and CORK Tokens on Purchase
@@ -103,42 +103,16 @@ export async function POST(req: NextRequest) {
     
     try {
       if (isBech32) {
-        // Parse Bech32 format: suiprivkey<bech32-encoded-data>
-        // The Bech32-encoded data contains: flag byte (0x00=Ed25519, 0x01=secp256k1) + private key bytes
-        const bech32Data = adminPrivateKey.slice('suiprivkey'.length);
-        const decoded = bech32.decode(bech32Data);
+        // Use Sui SDK's built-in Bech32 decoder
+        const { secretKey, scheme } = decodeSuiPrivateKey(adminPrivateKey);
         
-        // Convert Bech32 words (5-bit) to bytes (8-bit)
-        // Bech32 uses 5-bit words, so we need to convert them back to bytes
-        const words = decoded.words;
-        const bytes: number[] = [];
-        let bits = 0;
-        let value = 0;
-        
-        for (const word of words) {
-          value = (value << 5) | word;
-          bits += 5;
-          while (bits >= 8) {
-            bytes.push((value >> (bits - 8)) & 0xff);
-            bits -= 8;
-          }
-        }
-        
-        const data = Buffer.from(bytes);
-        
-        // First byte is the flag: 0x00 = Ed25519, 0x01 = secp256k1
-        const flag = data[0];
-        const secretKeyBytes = data.slice(1);
-        const secretKeyBase64 = toB64(new Uint8Array(secretKeyBytes));
-        
-        if (flag === 0x00) {
-          // Ed25519
-          keypair = Ed25519Keypair.fromSecretKey(fromB64(secretKeyBase64));
-        } else if (flag === 0x01) {
-          // secp256k1
-          keypair = Secp256k1Keypair.fromSecretKey(fromB64(secretKeyBase64));
+        // Create keypair based on the scheme
+        if (scheme === 'ed25519') {
+          keypair = Ed25519Keypair.fromSecretKey(secretKey);
+        } else if (scheme === 'secp256k1') {
+          keypair = Secp256k1Keypair.fromSecretKey(secretKey);
         } else {
-          throw new Error(`Unknown key scheme flag: ${flag} (expected 0x00 for Ed25519 or 0x01 for secp256k1)`);
+          throw new Error(`Unsupported key scheme: ${scheme} (expected 'ed25519' or 'secp256k1')`);
         }
         adminAddress = keypair.toSuiAddress();
       } else {
