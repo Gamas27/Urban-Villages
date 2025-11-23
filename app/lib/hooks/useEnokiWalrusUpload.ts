@@ -70,8 +70,11 @@ export function useEnokiWalrusUpload() {
     setError(null);
 
     try {
+      console.log('[Walrus] Starting upload for file:', file.name, file.size, 'bytes');
+      
       // Read file as array buffer
       const contents = await file.arrayBuffer();
+      console.log('[Walrus] File read, size:', contents.byteLength);
 
       // Create upload flow - using template pattern with writeFilesFlow
       const flow = walrus.writeFilesFlow({
@@ -83,18 +86,24 @@ export function useEnokiWalrusUpload() {
           }),
         ],
       });
+      console.log('[Walrus] Flow created');
 
       // Step 1: Encode
+      console.log('[Walrus] Step 1: Encoding...');
       await flow.encode();
+      console.log('[Walrus] Step 1: Encode complete');
 
       // Step 2: Register (returns transaction)
+      console.log('[Walrus] Step 2: Registering with owner:', currentAccount.address);
       const registerTx = flow.register({
         owner: currentAccount.address,
         epochs: 10,
         deletable: true,
       });
+      console.log('[Walrus] Step 2: Register transaction created');
 
       // Step 3: Sign and execute register transaction - using template pattern with promise wrapper
+      console.log('[Walrus] Step 3: Signing and executing register transaction...');
       let registerDigest: string;
       let blobObjectId: string | null = null;
       
@@ -120,23 +129,32 @@ export function useEnokiWalrusUpload() {
                     blobObjectId = data.object_id || data.objectId || null;
                   }
                 }
+                console.log('[Walrus] Step 3: Register transaction confirmed, digest:', digest);
                 resolve();
               } catch (err) {
+                console.error('[Walrus] Step 3: Error waiting for register transaction:', err);
                 reject(err);
               }
             },
-            onError: reject,
+            onError: (err) => {
+              console.error('[Walrus] Step 3: Register transaction failed:', err);
+              reject(err);
+            },
           }
         );
       });
 
       // Step 4: Upload data to storage nodes
+      console.log('[Walrus] Step 4: Uploading to storage nodes, digest:', registerDigest);
       await flow.upload({ digest: registerDigest! });
+      console.log('[Walrus] Step 4: Upload complete');
 
       // Step 5: Certify (returns transaction)
+      console.log('[Walrus] Step 5: Creating certify transaction...');
       const certifyTx = flow.certify();
 
       // Step 6: Sign and execute certify transaction - using template pattern
+      console.log('[Walrus] Step 6: Signing and executing certify transaction...');
       await new Promise<void>((resolve, reject) => {
         signAndExecute(
           { transaction: certifyTx },
@@ -144,25 +162,33 @@ export function useEnokiWalrusUpload() {
             onSuccess: async ({ digest }) => {
               try {
                 await suiClient.waitForTransaction({ digest });
+                console.log('[Walrus] Step 6: Certify transaction confirmed, digest:', digest);
                 resolve();
               } catch (err) {
+                console.error('[Walrus] Step 6: Error waiting for certify transaction:', err);
                 reject(err);
               }
             },
-            onError: reject,
+            onError: (err) => {
+              console.error('[Walrus] Step 6: Certify transaction failed:', err);
+              reject(err);
+            },
           }
         );
       });
 
       // Step 7: Get blobId
+      console.log('[Walrus] Step 7: Getting blobId...');
       const files = await flow.listFiles();
       const blobId = files[0]?.blobId;
+      console.log('[Walrus] Step 7: blobId:', blobId);
 
       if (!blobId) {
         throw new Error('Failed to get blobId after upload');
       }
 
       const metadataId = blobObjectId || blobId;
+      console.log('[Walrus] Upload successful! blobId:', blobId, 'metadataId:', metadataId);
 
       return {
         blobId,
@@ -172,7 +198,11 @@ export function useEnokiWalrusUpload() {
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Unknown error';
       setError(`Upload failed: ${errorMsg}`);
-      console.error('Walrus upload error:', err);
+      console.error('[Walrus] Upload error details:', {
+        error: err,
+        message: errorMsg,
+        stack: err instanceof Error ? err.stack : undefined,
+      });
       return null;
     } finally {
       setUploading(false);
