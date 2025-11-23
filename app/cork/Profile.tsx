@@ -1,10 +1,11 @@
 'use client';
 
-import { Sparkles, Package, Users, Calendar, ExternalLink } from 'lucide-react';
+import { Sparkles, Package, Users, Calendar, ExternalLink, RotateCcw } from 'lucide-react';
 import { getVillageById } from './data/villages';
 import { Button } from '@/components/ui/button';
-import { useUserProfile, useUserNamespace, useUserVillage } from '@/lib/stores/userStore';
+import { useUserProfile, useUserNamespace, useUserVillage, useUserStore } from '@/lib/stores/userStore';
 import { useBackendProfile, useBackendStore } from '@/lib/stores/backendStore';
+import { useBlockchainStore } from '@/lib/stores/blockchainStore';
 import { WalrusImage } from '@/components/WalrusImage';
 import { useCurrentAccount, useSuiClientQuery } from '@mysten/dapp-kit';
 import { useMemo, useEffect, useState } from 'react';
@@ -17,7 +18,10 @@ export function Profile() {
   const userVillage = useUserVillage();
   const account = useCurrentAccount();
   const backendProfile = useBackendProfile();
-  const { fetchBackendProfile } = useBackendStore();
+  const { fetchBackendProfile, reset: resetBackendStore } = useBackendStore();
+  const { reset: resetUserStore } = useUserStore();
+  const { clearTransactions } = useBlockchainStore();
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
   
   // Fetch backend profile when wallet is connected
   useEffect(() => {
@@ -259,7 +263,7 @@ export function Profile() {
       )}
 
       {/* Quick Actions */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm">
+      <div className="bg-white rounded-2xl p-6 shadow-sm mb-4">
         <h3 className="text-lg mb-4 text-gray-900 font-semibold">Quick Actions</h3>
         <div className="space-y-3">
           <Button
@@ -284,6 +288,64 @@ export function Profile() {
             <Users className="w-4 h-4" />
           </Button>
         </div>
+      </div>
+
+      {/* Demo Reset */}
+      <div className="bg-white rounded-2xl p-6 shadow-sm">
+        <h3 className="text-lg mb-4 text-gray-900 font-semibold">Demo Tools</h3>
+        {showResetConfirm ? (
+          <div className="space-y-3">
+            <p className="text-sm text-gray-600 mb-3">
+              This will clear all app data and return you to onboarding. Are you sure?
+            </p>
+            <div className="flex gap-2">
+              <Button
+                variant="destructive"
+                className="flex-1"
+                onClick={() => {
+                  // Reset all stores
+                  resetUserStore();
+                  resetBackendStore();
+                  clearTransactions();
+                  
+                  // Clear any additional localStorage/sessionStorage
+                  if (typeof window !== 'undefined') {
+                    sessionStorage.clear();
+                    // Keep only essential items if any
+                  }
+                  
+                  console.log('[Profile] App reset - returning to onboarding');
+                  
+                  // Reload page to show onboarding
+                  window.location.reload();
+                }}
+              >
+                Yes, Reset App
+              </Button>
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setShowResetConfirm(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button
+            variant="outline"
+            className="w-full justify-between text-orange-600 hover:text-orange-700 border-orange-200 hover:border-orange-300"
+            onClick={() => setShowResetConfirm(true)}
+          >
+            <span className="flex items-center gap-2">
+              <RotateCcw className="w-4 h-4" />
+              Reset App (Demo)
+            </span>
+          </Button>
+        )}
+        <p className="text-xs text-gray-500 mt-3">
+          Clear all app data to demo onboarding flow again
+        </p>
       </div>
 
       {/* Blockchain Info */}
