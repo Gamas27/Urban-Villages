@@ -117,7 +117,10 @@ export function Profile() {
                 initial={mergedProfile.username[0].toUpperCase()}
               />
             ) : (
-              <div className="w-24 h-24 rounded-full border-4 border-white shadow-lg bg-gradient-to-br from-purple-400 to-orange-400 flex items-center justify-center text-3xl font-bold text-white">
+              <div 
+                className="w-24 h-24 rounded-full border-4 border-white shadow-lg bg-gradient-to-br from-purple-400 to-orange-400 flex items-center justify-center text-3xl font-bold text-white"
+                title="No profile picture"
+              >
                 {mergedProfile.username[0].toUpperCase()}
               </div>
             )}

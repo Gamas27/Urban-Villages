@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { getWalrusUrl } from '@/lib/walrus';
-import { getPlaceholderPostImageUrl, getPlaceholderProfilePicUrl } from '@/lib/placeholders';
+import { getPlaceholderPostImageUrl } from '@/lib/placeholders';
 
 interface WalrusImageProps {
   blobId: string;
@@ -11,6 +11,7 @@ interface WalrusImageProps {
   network?: 'testnet' | 'mainnet';
   type?: 'post' | 'profile';
   initial?: string; // For profile placeholders
+  onError?: () => void; // Callback when image fails to load
 }
 
 export function WalrusImage({ 
@@ -19,16 +20,12 @@ export function WalrusImage({
   className, 
   network = 'testnet',
   type = 'post',
-  initial
+  initial,
+  onError
 }: WalrusImageProps) {
   const [error, setError] = useState(false);
   const [retryCount, setRetryCount] = useState(0);
   const url = getWalrusUrl(blobId, network);
-
-  // Get placeholder URL based on type
-  const placeholderUrl = type === 'profile' 
-    ? getPlaceholderProfilePicUrl(initial)
-    : getPlaceholderPostImageUrl();
 
   // Retry once before showing placeholder (in case of temporary network issues)
   const handleError = () => {
@@ -43,13 +40,32 @@ export function WalrusImage({
       }, 1000);
     } else {
       setError(true);
+      // Call parent error handler if provided
+      if (onError) {
+        onError();
+      }
     }
   };
 
-  if (error) {
+  // For profile pictures, render a local fallback instead of external placeholder
+  if (error && type === 'profile') {
+    // Extract size classes from className, but replace image-specific classes
+    const baseClasses = className?.replace(/\bobject-cover\b/g, '').trim() || '';
+    return (
+      <div 
+        className={`${baseClasses} bg-gradient-to-br from-purple-400 to-orange-400 flex items-center justify-center text-3xl font-bold text-white`}
+        title="Profile picture unavailable"
+      >
+        {initial || alt[0]?.toUpperCase() || 'U'}
+      </div>
+    );
+  }
+
+  // For posts, use external placeholder (or could be improved to use local fallback)
+  if (error && type === 'post') {
     return (
       <img
-        src={placeholderUrl}
+        src={getPlaceholderPostImageUrl()}
         alt={alt}
         className={className}
         title="Walrus image unavailable - showing placeholder"

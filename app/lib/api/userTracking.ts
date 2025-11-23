@@ -118,8 +118,10 @@ export async function getUserProfile(walletAddress: string) {
 
     if (!response.ok) {
       if (response.status === 404) {
-        return null; // User not found
+        // User not found - this is expected for users who haven't completed onboarding
+        return null;
       }
+      // Only log non-404 errors
       const error = await response.json();
       console.error('[getUserProfile] Error:', error);
       return null;
@@ -128,6 +130,7 @@ export async function getUserProfile(walletAddress: string) {
     const result = await response.json();
     return result.data;
   } catch (error) {
+    // Network errors should be logged
     console.error('[getUserProfile] Failed to fetch profile:', error);
     return null;
   }
