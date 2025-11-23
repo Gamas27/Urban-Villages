@@ -145,7 +145,7 @@ export function useEnokiWalrusUpload() {
       });
 
       // Step 4: Upload data to storage nodes
-      console.log('[Walrus] Step 4: Uploading to storage nodes, digest:', registerDigest);
+      console.log('[Walrus] Step 4: Uploading to storage nodes, digest:', registerDigest!);
       await flow.upload({ digest: registerDigest! });
       console.log('[Walrus] Step 4: Upload complete');
 
