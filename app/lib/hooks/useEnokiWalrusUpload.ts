@@ -104,7 +104,7 @@ export function useEnokiWalrusUpload() {
 
       // Step 3: Sign and execute register transaction - using template pattern with promise wrapper
       console.log('[Walrus] Step 3: Signing and executing register transaction...');
-      let registerDigest: string;
+      let registerDigest!: string; // Definite assignment assertion - guaranteed to be assigned before use
       let blobObjectId: string | null = null;
       
       await new Promise<void>((resolve, reject) => {
@@ -146,6 +146,7 @@ export function useEnokiWalrusUpload() {
 
       // Step 4: Upload data to storage nodes (OPTIMIZED - retry logic for reliability)
       // This is the bottleneck - we retry up to 3 times with exponential backoff
+      // registerDigest is guaranteed to be assigned here since Promise only resolves after onSuccess
       console.log('[Walrus] Step 4: Uploading to storage nodes, digest:', registerDigest!);
       
       let uploadSuccess = false;

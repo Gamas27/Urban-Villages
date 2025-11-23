@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/db/supabase';
+import { getSupabaseServer } from '@/lib/db/supabase';
 import { fetchPostsFromWalrus } from '@/lib/walrus/postStorage';
 
 /**
@@ -12,6 +12,8 @@ import { fetchPostsFromWalrus } from '@/lib/walrus/postStorage';
  * - offset?: number - Pagination offset
  */
 export async function GET(req: NextRequest) {
+  const supabase = getSupabaseServer();
+  
   if (!supabase) {
     return NextResponse.json(
       { error: 'Database not configured' },
@@ -147,6 +149,8 @@ export async function GET(req: NextRequest) {
  * }
  */
 export async function POST(req: NextRequest) {
+  const supabase = getSupabaseServer();
+  
   if (!supabase) {
     return NextResponse.json(
       { error: 'Database not configured' },

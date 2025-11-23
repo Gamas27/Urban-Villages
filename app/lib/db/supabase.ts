@@ -26,6 +26,22 @@ export const supabase = supabaseUrl && supabaseAnonKey
   : null;
 
 /**
+ * Server-side Supabase client (for API routes)
+ * Uses anon key - safe for server-side use
+ */
+export function getSupabaseServer() {
+  if (!supabaseUrl || !supabaseAnonKey) {
+    return null;
+  }
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+}
+
+/**
  * Server-side Supabase client with service role key (if needed)
  * Only use this in API routes where you need admin access
  */

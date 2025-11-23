@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/db/supabase';
+import { getSupabaseServer } from '@/lib/db/supabase';
 
 /**
  * POST /api/users/onboarding/track
@@ -13,6 +13,8 @@ import { supabase } from '@/lib/db/supabase';
  * }
  */
 export async function POST(req: NextRequest) {
+  const supabase = getSupabaseServer();
+  
   if (!supabase) {
     return NextResponse.json(
       { error: 'Database not configured' },

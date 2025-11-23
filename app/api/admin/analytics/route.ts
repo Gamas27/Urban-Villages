@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/db/supabase';
+import { getSupabaseServer } from '@/lib/db/supabase';
 
 /**
  * GET /api/admin/analytics
@@ -9,6 +9,8 @@ import { supabase } from '@/lib/db/supabase';
  * - period?: 'hour' | 'day' | 'all' (default: 'all')
  */
 export async function GET(req: NextRequest) {
+  const supabase = getSupabaseServer();
+  
   if (!supabase) {
     return NextResponse.json(
       { error: 'Database not configured' },
