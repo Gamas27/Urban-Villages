@@ -28,9 +28,10 @@ export async function GET(req: NextRequest) {
     const offset = parseInt(searchParams.get('offset') || '0');
 
     // Step 1: Query Supabase index (fast filtering by village, pagination)
+    // Note: walrus_blob_id column may not exist in older database schemas
     let query = supabase
       .from('posts')
-      .select('id, walrus_blob_id, namespace, village, created_at, text, image_blob_id, users:user_id(wallet_address, username, profile_pic_blob_id)')
+      .select('id, namespace, village, created_at, text, image_blob_id, users:user_id(wallet_address, username, profile_pic_blob_id)')
       .order('created_at', { ascending: false })
       .range(offset, offset + limit - 1);
 
@@ -217,26 +218,48 @@ export async function POST(req: NextRequest) {
     if (imageBlobId) corkEarned += 5; // Bonus for image
 
     // Create post index entry in Supabase
-    const { data: post, error: postError } = await supabase
+    // Try with walrus_blob_id first, fallback without it if column doesn't exist
+    const basePostData: any = {
+      user_id: user.id,
+      namespace,
+      village,
+      text: text.trim(), // Keep as fallback for legacy posts
+      image_blob_id: imageBlobId || null,
+      image_url: imageUrl || null,
+      post_type: type,
+      activity_data: activityData || null,
+      cork_earned: corkEarned,
+      likes: 0,
+      comments: 0,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    // Try to include walrus_blob_id if provided
+    if (walrusBlobId) {
+      basePostData.walrus_blob_id = walrusBlobId;
+    }
+
+    let { data: post, error: postError } = await supabase
       .from('posts')
-      .insert({
-        user_id: user.id,
-        namespace,
-        village,
-        text: text.trim(), // Keep as fallback for legacy posts
-        image_blob_id: imageBlobId || null,
-        image_url: imageUrl || null,
-        post_type: type,
-        activity_data: activityData || null,
-        cork_earned: corkEarned,
-        likes: 0,
-        comments: 0,
-        walrus_blob_id: walrusBlobId || null, // New: Walrus blob ID
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      })
+      .insert(basePostData)
       .select()
       .single();
+
+    // If error is due to missing walrus_blob_id column, retry without it
+    if (postError && walrusBlobId && (
+      postError.message?.includes('walrus_blob_id') || 
+      postError.message?.includes('does not exist')
+    )) {
+      delete basePostData.walrus_blob_id;
+      const retryResult = await supabase
+        .from('posts')
+        .insert(basePostData)
+        .select()
+        .single();
+      post = retryResult.data;
+      postError = retryResult.error;
+    }
 
     if (postError) {
       console.error('[POST /api/posts] Error:', postError);
