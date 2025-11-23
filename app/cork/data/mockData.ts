@@ -32,6 +32,7 @@ export interface Post {
     bottleName?: string;
     bottleImage?: string;
   };
+  profilePicBlobId?: string;
 }
 
 export interface User {

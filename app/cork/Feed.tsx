@@ -48,6 +48,7 @@ export function Feed({ village }: FeedProps) {
           comments: post.comments || 0,
           type: (post.type as any) || 'regular',
           activityData: post.activityData || undefined,
+          profilePicBlobId: post.profilePicBlobId || undefined,
         }));
         
         setPosts(transformedPosts);
@@ -179,9 +180,19 @@ export function Feed({ village }: FeedProps) {
             >
               {/* Post Header */}
               <div className="p-4 flex items-center gap-3">
-                <div className={`w-12 h-12 bg-gradient-to-br ${postVillage?.gradient || 'from-gray-300 to-gray-400'} rounded-full flex items-center justify-center text-2xl`}>
-                  {postVillage?.emoji || '🍷'}
-                </div>
+                {post.profilePicBlobId ? (
+                  <WalrusImage
+                    blobId={post.profilePicBlobId}
+                    alt={post.author}
+                    className="w-12 h-12 rounded-full object-cover ring-2 ring-purple-100"
+                    type="profile"
+                    initial={post.author[0]?.toUpperCase() || 'U'}
+                  />
+                ) : (
+                  <div className={`w-12 h-12 bg-gradient-to-br ${postVillage?.gradient || 'from-gray-300 to-gray-400'} rounded-full flex items-center justify-center text-2xl ring-2 ring-purple-100`}>
+                    {postVillage?.emoji || '🍷'}
+                  </div>
+                )}
                 <div className="flex-1">
                   <p className="font-semibold">@{post.namespace}</p>
                   <p className="text-xs text-gray-500">

@@ -19,7 +19,8 @@ export function Profile() {
   const account = useCurrentAccount();
   const backendProfile = useBackendProfile();
   const { fetchBackendProfile, reset: resetBackendStore } = useBackendStore();
-  const { reset: resetUserStore } = useUserStore();
+  const userStore = useUserStore();
+  const { reset: resetUserStore } = userStore;
   const { clearTransactions } = useBlockchainStore();
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   
@@ -77,15 +78,24 @@ export function Profile() {
           });
           setValidatedBlobId(null);
           
-          // Optionally clean up invalid blobId from database
-          if (account.address && backendProfile?.profilePicBlobId === mergedProfile.profilePicBlobId) {
-            console.log('[Profile] Cleaning up invalid blobId from database...');
-            saveUserProfile({
-              walletAddress: account.address,
-              profilePicBlobId: undefined, // Clear invalid blobId
-            }).then(() => {
-              console.log('[Profile] Invalid blobId cleared from database');
-            });
+          // Clean up invalid blobId from both userStore and database
+          if (account.address) {
+            // Clear from userStore if it matches
+            if (profile?.profilePicBlobId === mergedProfile.profilePicBlobId) {
+              console.log('[Profile] Cleaning up invalid blobId from userStore...');
+              userStore.updateProfile({ profilePicBlobId: undefined });
+            }
+            
+            // Clear from database if it matches backend profile
+            if (backendProfile?.profilePicBlobId === mergedProfile.profilePicBlobId) {
+              console.log('[Profile] Cleaning up invalid blobId from database...');
+              saveUserProfile({
+                walletAddress: account.address,
+                profilePicBlobId: undefined, // Clear invalid blobId
+              }).then(() => {
+                console.log('[Profile] Invalid blobId cleared from database');
+              });
+            }
           }
         }
       });
