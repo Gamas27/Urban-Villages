@@ -12,6 +12,7 @@ import {
   NavigationMenuTrigger,
   navigationMenuTriggerStyle,
 } from "./ui/navigation-menu";
+import { cn } from "./ui/utils";
 
 export default function Navbar() {
   return (
@@ -27,19 +28,19 @@ export default function Navbar() {
           </NavigationMenuItem>
           
           <NavigationMenuItem>
-            <NavigationMenuLink asChild className={navigationMenuTriggerStyle()}>
+            <NavigationMenuLink asChild className={cn(navigationMenuTriggerStyle(), "text-gray-900")}>
               <Link href="/" className="text-gray-900">Home</Link>
             </NavigationMenuLink>
           </NavigationMenuItem>
 
           <NavigationMenuItem>
-            <NavigationMenuLink asChild className={navigationMenuTriggerStyle()}>
+            <NavigationMenuLink asChild className={cn(navigationMenuTriggerStyle(), "text-gray-900")}>
               <Link href="/cork" className="text-gray-900">Cork Collective</Link>
             </NavigationMenuLink>
           </NavigationMenuItem>
 
           <NavigationMenuItem>
-            <NavigationMenuLink asChild className={navigationMenuTriggerStyle()}>
+            <NavigationMenuLink asChild className={cn(navigationMenuTriggerStyle(), "text-gray-900")}>
               <Link href="/test-walrus" className="text-gray-900">Test Walrus</Link>
             </NavigationMenuLink>
           </NavigationMenuItem>

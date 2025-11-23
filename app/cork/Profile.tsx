@@ -4,15 +4,36 @@ import { Sparkles, Package, Users, Calendar, ExternalLink } from 'lucide-react';
 import { getVillageById } from './data/villages';
 import { Button } from '@/components/ui/button';
 import { useUserProfile, useUserNamespace, useUserVillage } from '@/lib/stores/userStore';
+import { useBackendProfile, useBackendStore } from '@/lib/stores/backendStore';
 import { WalrusImage } from '@/components/WalrusImage';
 import { useCurrentAccount, useSuiClientQuery } from '@mysten/dapp-kit';
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 
 export function Profile() {
   const profile = useUserProfile();
   const namespace = useUserNamespace();
   const userVillage = useUserVillage();
   const account = useCurrentAccount();
+  const backendProfile = useBackendProfile();
+  const { fetchBackendProfile } = useBackendStore();
+  
+  // Fetch backend profile when wallet is connected
+  useEffect(() => {
+    if (account?.address) {
+      fetchBackendProfile(account.address);
+    }
+  }, [account?.address, fetchBackendProfile]);
+  
+  // Merge backend profile with userStore profile (backend takes precedence for profilePicBlobId)
+  const mergedProfile = useMemo(() => {
+    if (!profile) return null;
+    
+    return {
+      ...profile,
+      // Use backend profilePicBlobId if available (more up-to-date)
+      profilePicBlobId: backendProfile?.profilePicBlobId || profile.profilePicBlobId,
+    };
+  }, [profile, backendProfile]);
   
   const village = getVillageById(userVillage || 'lisbon');
   
@@ -56,7 +77,7 @@ export function Profile() {
   
   const bottlesOwned = ownedBottles?.data?.length || 0;
 
-  if (!profile) {
+  if (!mergedProfile) {
     return (
       <div className="min-h-screen p-4 pb-24 flex items-center justify-center">
         <div className="text-center">
@@ -87,17 +108,17 @@ export function Profile() {
         <div className="px-6 pb-6">
           {/* Profile Picture */}
           <div className="flex justify-between items-end -mt-16 mb-4">
-            {profile.profilePicBlobId ? (
+            {mergedProfile.profilePicBlobId ? (
               <WalrusImage
-                blobId={profile.profilePicBlobId}
-                alt={profile.username}
+                blobId={mergedProfile.profilePicBlobId}
+                alt={mergedProfile.username}
                 className="w-24 h-24 rounded-full border-4 border-white shadow-lg object-cover"
                 type="profile"
-                initial={profile.username[0].toUpperCase()}
+                initial={mergedProfile.username[0].toUpperCase()}
               />
             ) : (
               <div className="w-24 h-24 rounded-full border-4 border-white shadow-lg bg-gradient-to-br from-purple-400 to-orange-400 flex items-center justify-center text-3xl font-bold text-white">
-                {profile.username[0].toUpperCase()}
+                {mergedProfile.username[0].toUpperCase()}
               </div>
             )}
             <Button
@@ -109,7 +130,7 @@ export function Profile() {
           </div>
 
           {/* User Info */}
-          <h2 className="text-2xl mb-1">{profile.username}</h2>
+          <h2 className="text-2xl mb-1">{mergedProfile.username}</h2>
           <p className="text-purple-600 mb-2">@{namespace || 'user'}</p>
           <div className="flex items-center gap-2 text-sm text-gray-600 mb-4">
             <Calendar className="w-4 h-4" />
