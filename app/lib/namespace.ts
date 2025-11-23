@@ -85,8 +85,8 @@ export async function registerNamespace(
   username: string,
   village: string,
   profilePicBlobId: string | undefined,
-  signAndExecute: (params: { transaction: Transaction }) => Promise<{ digest: string }>,
-  sender?: string
+  signAndExecute: (params: { transaction: Transaction }, callbacks?: { onSuccess?: (result: { digest: string }) => void; onError?: (error: any) => void }) => void,
+  suiClient: any
 ): Promise<string> {
   // Validate inputs
   if (!username || !village) {
@@ -140,9 +140,25 @@ export async function registerNamespace(
     ],
   });
 
-  // Execute transaction (user pays gas)
-  const result = await signAndExecute({ transaction: tx });
-  return result.digest;
+  // Execute transaction (user pays gas) - using official dapp-kit pattern
+  return new Promise<string>((resolve, reject) => {
+    signAndExecute(
+      { transaction: tx },
+      {
+        onSuccess: async ({ digest }) => {
+          try {
+            await suiClient.waitForTransaction({ digest });
+            resolve(digest);
+          } catch (error) {
+            reject(error);
+          }
+        },
+        onError: (error) => {
+          reject(error);
+        },
+      }
+    );
+  });
 }
 
 /**

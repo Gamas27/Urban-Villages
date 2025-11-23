@@ -14,31 +14,8 @@ import { saveUserProfile, trackOnboardingEvent, logTransaction } from '@/lib/api
 
 export default function CorkApp() {
   const account = useCurrentAccount();
-  const { mutate: signAndExecuteMutate } = useSignAndExecuteTransaction();
+  const { mutate: signAndExecute } = useSignAndExecuteTransaction();
   const suiClient = useSuiClient();
-  
-  // Wrapper function to match expected signature using mutate with callbacks
-  const signAndExecute = async (params: { transaction: Transaction }): Promise<{ digest: string }> => {
-    return new Promise<{ digest: string }>((resolve, reject) => {
-      signAndExecuteMutate(
-        params as any,
-        {
-          onSuccess: async ({ digest }) => {
-            try {
-              // Wait for transaction confirmation
-              await suiClient.waitForTransaction({ digest });
-              resolve({ digest });
-            } catch (error) {
-              reject(error);
-            }
-          },
-          onError: (error) => {
-            reject(error);
-          },
-        }
-      );
-    });
-  };
   const profile = useUserProfile();
   const { setProfile, updateProfile, setLoading, setError, loading, error: registrationError } = useUserStore();
   const { syncProfile } = useBackendStore();
@@ -91,7 +68,7 @@ export default function CorkApp() {
           data.village,
           data.profilePicBlobId,
           signAndExecute,
-          account.address
+          suiClient
         );
         
         if (result.success && result.data) {

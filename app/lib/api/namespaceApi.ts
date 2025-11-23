@@ -37,15 +37,15 @@ export async function checkNamespace(
  * @param username - Username
  * @param village - Village ID
  * @param profilePicBlobId - Optional profile picture blob ID
- * @param signAndExecute - Transaction signing function from dapp-kit
- * @param sender - Optional sender address (helps with transaction determination)
+ * @param signAndExecute - Transaction signing function from dapp-kit (mutate)
+ * @param suiClient - SuiClient instance for waiting on transactions
  */
 export async function registerNamespace(
   username: string,
   village: string,
   profilePicBlobId: string | undefined,
-  signAndExecute: (params: { transaction: Transaction }) => Promise<{ digest: string }>,
-  sender?: string
+  signAndExecute: (params: { transaction: Transaction }, callbacks?: { onSuccess?: (result: { digest: string }) => void; onError?: (error: any) => void }) => void,
+  suiClient: any
 ): Promise<ApiResponse<string>> {
   try {
     // Validate inputs
@@ -90,7 +90,7 @@ export async function registerNamespace(
           village,
           profilePicBlobId,
           signAndExecute,
-          sender
+          suiClient
         );
         
         return createSuccessResponse(digest);
