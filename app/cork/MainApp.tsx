@@ -122,6 +122,12 @@ export function MainApp() {
               <MapPin className="w-4 h-4" />
               <span className="text-sm">{village?.name || 'Village'}</span>
             </button>
+            <button
+              onClick={() => setActiveTab('profile')}
+              className="flex items-center justify-center w-10 h-10 bg-black bg-opacity-20 backdrop-blur rounded-full hover:bg-opacity-30 transition-all border border-white border-opacity-20"
+            >
+              <User className="w-5 h-5" />
+            </button>
           </div>
         </div>
       </div>
@@ -137,73 +143,68 @@ export function MainApp() {
 
       {/* Bottom Navigation */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
-        <div className="max-w-2xl mx-auto flex items-center justify-around px-2 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
-          <button
-            onClick={() => setActiveTab('feed')}
-            className={`flex flex-col items-center justify-center gap-1 p-3 min-w-[64px] transition-colors duration-200 ${
-              activeTab === 'feed'
-                ? 'text-purple-600'
-                : 'text-gray-500'
-            }`}
-          >
-            <Home className={`w-6 h-6 transition-all duration-200 ${activeTab === 'feed' ? 'fill-purple-600' : ''}`} />
-            <span className={`text-[10px] ${activeTab === 'feed' ? 'font-semibold' : 'font-medium'}`}>Feed</span>
-          </button>
+        <div className="max-w-2xl mx-auto relative flex items-center justify-between px-2 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
+          {/* Left side buttons */}
+          <div className="flex items-center flex-1 justify-start">
+            <button
+              onClick={() => setActiveTab('feed')}
+              className={`flex flex-col items-center justify-center gap-1 p-3 min-w-[64px] transition-colors duration-200 ${
+                activeTab === 'feed'
+                  ? 'text-purple-600'
+                  : 'text-gray-500'
+              }`}
+            >
+              <Home className={`w-6 h-6 transition-all duration-200 ${activeTab === 'feed' ? 'fill-purple-600' : ''}`} />
+              <span className={`text-[10px] ${activeTab === 'feed' ? 'font-semibold' : 'font-medium'}`}>Feed</span>
+            </button>
 
-          <button
-            onClick={() => setActiveTab('shop')}
-            className={`flex flex-col items-center justify-center gap-1 p-3 min-w-[64px] transition-colors duration-200 ${
-              activeTab === 'shop'
-                ? 'text-purple-600'
-                : 'text-gray-500'
-            }`}
-          >
-            <ShoppingBag className={`w-6 h-6 transition-all duration-200 ${activeTab === 'shop' ? 'fill-purple-600' : ''}`} />
-            <span className={`text-[10px] ${activeTab === 'shop' ? 'font-semibold' : 'font-medium'}`}>Shop</span>
-          </button>
+            <button
+              onClick={() => setActiveTab('shop')}
+              className={`flex flex-col items-center justify-center gap-1 p-3 min-w-[64px] transition-colors duration-200 ${
+                activeTab === 'shop'
+                  ? 'text-purple-600'
+                  : 'text-gray-500'
+              }`}
+            >
+              <ShoppingBag className={`w-6 h-6 transition-all duration-200 ${activeTab === 'shop' ? 'fill-purple-600' : ''}`} />
+              <span className={`text-[10px] ${activeTab === 'shop' ? 'font-semibold' : 'font-medium'}`}>Shop</span>
+            </button>
+          </div>
 
-          <button
-            onClick={() => setActiveTab('friends')}
-            className={`flex flex-col items-center justify-center gap-1 p-3 min-w-[64px] transition-colors duration-200 ${
-              activeTab === 'friends'
-                ? 'text-purple-600'
-                : 'text-gray-500'
-            }`}
-          >
-            <Users className={`w-6 h-6 transition-all duration-200 ${activeTab === 'friends' ? 'fill-purple-600' : ''}`} />
-            <span className={`text-[10px] ${activeTab === 'friends' ? 'font-semibold' : 'font-medium'}`}>Friends</span>
-          </button>
-
+          {/* Center Post button */}
           <button
             onClick={() => setShowPostComposer(true)}
-            className="flex items-center justify-center w-14 h-14 -mt-7 bg-gradient-to-r from-orange-500 to-purple-600 text-white rounded-full shadow-[0_8px_16px_rgba(168,85,247,0.4)] hover:shadow-[0_12px_20px_rgba(168,85,247,0.5)] transition-all duration-200 hover:scale-105 active:scale-95"
+            className="absolute left-1/2 transform -translate-x-1/2 flex items-center justify-center w-14 h-14 -mt-7 bg-gradient-to-r from-orange-500 to-purple-600 text-white rounded-full shadow-[0_8px_16px_rgba(168,85,247,0.4)] hover:shadow-[0_12px_20px_rgba(168,85,247,0.5)] transition-all duration-200 hover:scale-105 active:scale-95 z-10"
           >
             <PlusCircle className="w-7 h-7" strokeWidth={2} />
           </button>
 
-          <button
-            onClick={() => setActiveTab('collection')}
-            className={`flex flex-col items-center justify-center gap-1 p-3 min-w-[64px] transition-colors duration-200 ${
-              activeTab === 'collection'
-                ? 'text-purple-600'
-                : 'text-gray-500'
-            }`}
-          >
-            <Package className={`w-6 h-6 transition-all duration-200 ${activeTab === 'collection' ? 'fill-purple-600' : ''}`} />
-            <span className={`text-[10px] ${activeTab === 'collection' ? 'font-semibold' : 'font-medium'}`}>Collection</span>
-          </button>
+          {/* Right side buttons */}
+          <div className="flex items-center flex-1 justify-end">
+            <button
+              onClick={() => setActiveTab('friends')}
+              className={`flex flex-col items-center justify-center gap-1 p-3 min-w-[64px] transition-colors duration-200 ${
+                activeTab === 'friends'
+                  ? 'text-purple-600'
+                  : 'text-gray-500'
+              }`}
+            >
+              <Users className={`w-6 h-6 transition-all duration-200 ${activeTab === 'friends' ? 'fill-purple-600' : ''}`} />
+              <span className={`text-[10px] ${activeTab === 'friends' ? 'font-semibold' : 'font-medium'}`}>Friends</span>
+            </button>
 
-          <button
-            onClick={() => setActiveTab('profile')}
-            className={`flex flex-col items-center justify-center gap-1 p-3 min-w-[64px] transition-colors duration-200 ${
-              activeTab === 'profile'
-                ? 'text-purple-600'
-                : 'text-gray-500'
-            }`}
-          >
-            <User className={`w-6 h-6 transition-all duration-200 ${activeTab === 'profile' ? 'fill-purple-600' : ''}`} />
-            <span className={`text-[10px] ${activeTab === 'profile' ? 'font-semibold' : 'font-medium'}`}>Profile</span>
-          </button>
+            <button
+              onClick={() => setActiveTab('collection')}
+              className={`flex flex-col items-center justify-center gap-1 p-3 min-w-[64px] transition-colors duration-200 ${
+                activeTab === 'collection'
+                  ? 'text-purple-600'
+                  : 'text-gray-500'
+              }`}
+            >
+              <Package className={`w-6 h-6 transition-all duration-200 ${activeTab === 'collection' ? 'fill-purple-600' : ''}`} />
+              <span className={`text-[10px] ${activeTab === 'collection' ? 'font-semibold' : 'font-medium'}`}>Collection</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
